@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "BMcrfym/wOc=",
+  "dgSpecHash": "7JqKzUJYEMI=",
   "success": true,
-  "projectFilePath": "C:\\Users\\user\\Music\\Squawk\\Squawk\\Squawk\\Squawk.csproj",
+  "projectFilePath": "C:\\Users\\user\\Music\\Squawk\\Squawk\\Squawk\\Squawk.Desktop\\Squawk.Desktop.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\user\\.nuget\\packages\\microsoft.aspnetcore.authorization\\8.0.0\\microsoft.aspnetcore.authorization.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.aspnetcore.components\\8.0.0\\microsoft.aspnetcore.components.8.0.0.nupkg.sha512",
@@ -10,7 +10,8 @@
     "C:\\Users\\user\\.nuget\\packages\\microsoft.aspnetcore.components.forms\\8.0.0\\microsoft.aspnetcore.components.forms.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.aspnetcore.components.web\\8.0.0\\microsoft.aspnetcore.components.web.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.aspnetcore.components.webassembly\\8.0.0\\microsoft.aspnetcore.components.webassembly.8.0.0.nupkg.sha512",
-    "C:\\Users\\user\\.nuget\\packages\\microsoft.aspnetcore.components.webassembly.devserver\\8.0.0\\microsoft.aspnetcore.components.webassembly.devserver.8.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.aspnetcore.components.webview\\8.0.0\\microsoft.aspnetcore.components.webview.8.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.aspnetcore.components.webview.wpf\\8.0.3\\microsoft.aspnetcore.components.webview.wpf.8.0.3.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.aspnetcore.metadata\\8.0.0\\microsoft.aspnetcore.metadata.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.extensions.configuration\\8.0.0\\microsoft.extensions.configuration.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.extensions.configuration.abstractions\\8.0.0\\microsoft.extensions.configuration.abstractions.8.0.0.nupkg.sha512",
@@ -20,6 +21,8 @@
     "C:\\Users\\user\\.nuget\\packages\\microsoft.extensions.dependencyinjection\\8.0.0\\microsoft.extensions.dependencyinjection.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.0\\microsoft.extensions.dependencyinjection.abstractions.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.extensions.fileproviders.abstractions\\8.0.0\\microsoft.extensions.fileproviders.abstractions.8.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.extensions.fileproviders.composite\\8.0.0\\microsoft.extensions.fileproviders.composite.8.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.extensions.fileproviders.embedded\\8.0.0\\microsoft.extensions.fileproviders.embedded.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.extensions.fileproviders.physical\\8.0.0\\microsoft.extensions.fileproviders.physical.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.extensions.filesystemglobbing\\8.0.0\\microsoft.extensions.filesystemglobbing.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.extensions.logging\\8.0.0\\microsoft.extensions.logging.8.0.0.nupkg.sha512",
@@ -28,15 +31,27 @@
     "C:\\Users\\user\\.nuget\\packages\\microsoft.extensions.primitives\\8.0.0\\microsoft.extensions.primitives.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.jsinterop\\8.0.0\\microsoft.jsinterop.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.jsinterop.webassembly\\8.0.0\\microsoft.jsinterop.webassembly.8.0.0.nupkg.sha512",
-    "C:\\Users\\user\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.22\\microsoft.net.illink.tasks.8.0.22.nupkg.sha512",
-    "C:\\Users\\user\\.nuget\\packages\\microsoft.net.sdk.webassembly.pack\\10.0.1\\microsoft.net.sdk.webassembly.pack.10.0.1.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.web.webview2\\1.0.2045.28\\microsoft.web.webview2.1.0.2045.28.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\system.io.pipelines\\8.0.0\\system.io.pipelines.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\system.text.encodings.web\\8.0.0\\system.text.encodings.web.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\system.text.json\\8.0.0\\system.text.json.8.0.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.22\\microsoft.netcore.app.ref.8.0.22.nupkg.sha512",
-    "C:\\Users\\user\\.nuget\\packages\\microsoft.netcore.app.runtime.mono.browser-wasm\\8.0.22\\microsoft.netcore.app.runtime.mono.browser-wasm.8.0.22.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.22\\microsoft.windowsdesktop.app.ref.8.0.22.nupkg.sha512",
-    "C:\\Users\\user\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.22\\microsoft.aspnetcore.app.ref.8.0.22.nupkg.sha512"
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.22\\microsoft.aspnetcore.app.ref.8.0.22.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\8.0.22\\microsoft.netcore.app.host.win-x64.8.0.22.nupkg.sha512"
   ],
-  "logs": []
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "message": "Squawk.Desktop jest zależny od Microsoft.AspNetCore.Components.WebView.Wpf (>= 8.0.0), ale Microsoft.AspNetCore.Components.WebView.Wpf 8.0.0 nie został znaleziony. Zamiast tego Microsoft.AspNetCore.Components.WebView.Wpf 8.0.3 został rozwiązany.",
+      "projectPath": "C:\\Users\\user\\Music\\Squawk\\Squawk\\Squawk\\Squawk.Desktop\\Squawk.Desktop.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\Users\\user\\Music\\Squawk\\Squawk\\Squawk\\Squawk.Desktop\\Squawk.Desktop.csproj",
+      "libraryId": "Microsoft.AspNetCore.Components.WebView.Wpf",
+      "targetGraphs": [
+        "net8.0-windows7.0"
+      ]
+    }
+  ]
 }

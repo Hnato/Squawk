@@ -1,7 +1,7 @@
 {
   "version": 3,
   "targets": {
-    "net8.0": {
+    "net8.0-windows7.0": {
       "Microsoft.AspNetCore.Authorization/8.0.0": {
         "type": "package",
         "dependencies": {
@@ -100,13 +100,52 @@
           }
         },
         "build": {
-          "build/net8.0/Microsoft.AspNetCore.Components.WebAssembly.props": {}
+          "build/net8.0/_._": {}
         }
       },
-      "Microsoft.AspNetCore.Components.WebAssembly.DevServer/8.0.0": {
+      "Microsoft.AspNetCore.Components.WebView/8.0.0": {
         "type": "package",
+        "dependencies": {
+          "Microsoft.AspNetCore.Components.Web": "8.0.0",
+          "Microsoft.Extensions.Configuration.Binder": "8.0.0",
+          "Microsoft.Extensions.Configuration.Json": "8.0.0",
+          "Microsoft.Extensions.FileProviders.Composite": "8.0.0",
+          "Microsoft.Extensions.FileProviders.Embedded": "8.0.0",
+          "Microsoft.Extensions.Logging": "8.0.0"
+        },
+        "compile": {
+          "lib/net8.0/Microsoft.AspNetCore.Components.WebView.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.AspNetCore.Components.WebView.dll": {
+            "related": ".xml"
+          }
+        }
+      },
+      "Microsoft.AspNetCore.Components.WebView.Wpf/8.0.3": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.AspNetCore.Components.WebView": "8.0.0",
+          "Microsoft.Web.WebView2": "1.0.2045.28"
+        },
+        "compile": {
+          "lib/net8.0-windows7.0/Microsoft.AspNetCore.Components.WebView.Wpf.dll": {
+            "related": ".pdb;.xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0-windows7.0/Microsoft.AspNetCore.Components.WebView.Wpf.dll": {
+            "related": ".pdb;.xml"
+          }
+        },
+        "frameworkReferences": [
+          "Microsoft.WindowsDesktop.App.WPF"
+        ],
         "build": {
-          "build/Microsoft.AspNetCore.Components.WebAssembly.DevServer.targets": {}
+          "build/Microsoft.AspNetCore.Components.WebView.Wpf.props": {},
+          "build/Microsoft.AspNetCore.Components.WebView.Wpf.targets": {}
         }
       },
       "Microsoft.AspNetCore.Metadata/8.0.0": {
@@ -280,6 +319,48 @@
           "buildTransitive/net6.0/_._": {}
         }
       },
+      "Microsoft.Extensions.FileProviders.Composite/8.0.0": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Extensions.FileProviders.Abstractions": "8.0.0",
+          "Microsoft.Extensions.Primitives": "8.0.0"
+        },
+        "compile": {
+          "lib/net8.0/Microsoft.Extensions.FileProviders.Composite.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.Extensions.FileProviders.Composite.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/net6.0/_._": {}
+        }
+      },
+      "Microsoft.Extensions.FileProviders.Embedded/8.0.0": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.Extensions.FileProviders.Abstractions": "8.0.0"
+        },
+        "compile": {
+          "lib/net8.0/Microsoft.Extensions.FileProviders.Embedded.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Microsoft.Extensions.FileProviders.Embedded.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "build/netstandard2.0/_._": {}
+        },
+        "buildMultiTargeting": {
+          "buildMultiTargeting/_._": {}
+        }
+      },
       "Microsoft.Extensions.FileProviders.Physical/8.0.0": {
         "type": "package",
         "dependencies": {
@@ -422,17 +503,46 @@
           }
         }
       },
-      "Microsoft.NET.ILLink.Tasks/8.0.22": {
+      "Microsoft.Web.WebView2/1.0.2045.28": {
         "type": "package",
+        "compile": {
+          "lib/netcoreapp3.0/Microsoft.Web.WebView2.Core.dll": {
+            "related": ".xml"
+          },
+          "lib/netcoreapp3.0/Microsoft.Web.WebView2.WinForms.dll": {
+            "related": ".xml"
+          },
+          "lib/netcoreapp3.0/Microsoft.Web.WebView2.Wpf.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netcoreapp3.0/Microsoft.Web.WebView2.Core.dll": {
+            "related": ".xml"
+          },
+          "lib/netcoreapp3.0/Microsoft.Web.WebView2.WinForms.dll": {
+            "related": ".xml"
+          },
+          "lib/netcoreapp3.0/Microsoft.Web.WebView2.Wpf.dll": {
+            "related": ".xml"
+          }
+        },
         "build": {
-          "build/Microsoft.NET.ILLink.Tasks.props": {}
-        }
-      },
-      "Microsoft.NET.Sdk.WebAssembly.Pack/10.0.1": {
-        "type": "package",
-        "build": {
-          "build/Microsoft.NET.Sdk.WebAssembly.Pack.props": {},
-          "build/Microsoft.NET.Sdk.WebAssembly.Pack.targets": {}
+          "build/_._": {}
+        },
+        "runtimeTargets": {
+          "runtimes/win-arm64/native/WebView2Loader.dll": {
+            "assetType": "native",
+            "rid": "win-arm64"
+          },
+          "runtimes/win-x64/native/WebView2Loader.dll": {
+            "assetType": "native",
+            "rid": "win-x64"
+          },
+          "runtimes/win-x86/native/WebView2Loader.dll": {
+            "assetType": "native",
+            "rid": "win-x86"
+          }
         }
       },
       "System.IO.Pipelines/8.0.0": {
@@ -491,491 +601,18 @@
         "build": {
           "buildTransitive/net6.0/System.Text.Json.targets": {}
         }
-      }
-    },
-    "net8.0/browser-wasm": {
-      "Microsoft.AspNetCore.Authorization/8.0.0": {
-        "type": "package",
+      },
+      "Squawk/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v8.0",
         "dependencies": {
-          "Microsoft.AspNetCore.Metadata": "8.0.0",
-          "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
-          "Microsoft.Extensions.Options": "8.0.0"
+          "Microsoft.AspNetCore.Components.WebAssembly": "8.0.0"
         },
         "compile": {
-          "lib/net8.0/Microsoft.AspNetCore.Authorization.dll": {
-            "related": ".xml"
-          }
+          "bin/placeholder/Squawk.dll": {}
         },
         "runtime": {
-          "lib/net8.0/Microsoft.AspNetCore.Authorization.dll": {
-            "related": ".xml"
-          }
-        }
-      },
-      "Microsoft.AspNetCore.Components/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.AspNetCore.Authorization": "8.0.0",
-          "Microsoft.AspNetCore.Components.Analyzers": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.AspNetCore.Components.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.AspNetCore.Components.dll": {
-            "related": ".xml"
-          }
-        }
-      },
-      "Microsoft.AspNetCore.Components.Analyzers/8.0.0": {
-        "type": "package",
-        "build": {
-          "buildTransitive/netstandard2.0/Microsoft.AspNetCore.Components.Analyzers.targets": {}
-        }
-      },
-      "Microsoft.AspNetCore.Components.Forms/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.AspNetCore.Components": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.AspNetCore.Components.Forms.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.AspNetCore.Components.Forms.dll": {
-            "related": ".xml"
-          }
-        }
-      },
-      "Microsoft.AspNetCore.Components.Web/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.AspNetCore.Components": "8.0.0",
-          "Microsoft.AspNetCore.Components.Forms": "8.0.0",
-          "Microsoft.Extensions.DependencyInjection": "8.0.0",
-          "Microsoft.Extensions.Primitives": "8.0.0",
-          "Microsoft.JSInterop": "8.0.0",
-          "System.IO.Pipelines": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.AspNetCore.Components.Web.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.AspNetCore.Components.Web.dll": {
-            "related": ".xml"
-          }
-        }
-      },
-      "Microsoft.AspNetCore.Components.WebAssembly/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.AspNetCore.Components.Web": "8.0.0",
-          "Microsoft.Extensions.Configuration.Binder": "8.0.0",
-          "Microsoft.Extensions.Configuration.Json": "8.0.0",
-          "Microsoft.Extensions.Logging": "8.0.0",
-          "Microsoft.JSInterop.WebAssembly": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.AspNetCore.Components.WebAssembly.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.AspNetCore.Components.WebAssembly.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "build/net8.0/Microsoft.AspNetCore.Components.WebAssembly.props": {}
-        }
-      },
-      "Microsoft.AspNetCore.Components.WebAssembly.DevServer/8.0.0": {
-        "type": "package",
-        "build": {
-          "build/Microsoft.AspNetCore.Components.WebAssembly.DevServer.targets": {}
-        }
-      },
-      "Microsoft.AspNetCore.Metadata/8.0.0": {
-        "type": "package",
-        "compile": {
-          "lib/net8.0/Microsoft.AspNetCore.Metadata.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.AspNetCore.Metadata.dll": {
-            "related": ".xml"
-          }
-        }
-      },
-      "Microsoft.Extensions.Configuration/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.Extensions.Configuration.Abstractions": "8.0.0",
-          "Microsoft.Extensions.Primitives": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.Extensions.Configuration.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.Configuration.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
-      "Microsoft.Extensions.Configuration.Abstractions/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.Extensions.Primitives": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.Extensions.Configuration.Abstractions.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.Configuration.Abstractions.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
-      "Microsoft.Extensions.Configuration.Binder/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.Extensions.Configuration.Abstractions": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.Extensions.Configuration.Binder.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.Configuration.Binder.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/netstandard2.0/Microsoft.Extensions.Configuration.Binder.targets": {}
-        }
-      },
-      "Microsoft.Extensions.Configuration.FileExtensions/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.Extensions.Configuration": "8.0.0",
-          "Microsoft.Extensions.Configuration.Abstractions": "8.0.0",
-          "Microsoft.Extensions.FileProviders.Abstractions": "8.0.0",
-          "Microsoft.Extensions.FileProviders.Physical": "8.0.0",
-          "Microsoft.Extensions.Primitives": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.Extensions.Configuration.FileExtensions.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.Configuration.FileExtensions.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
-      "Microsoft.Extensions.Configuration.Json/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.Extensions.Configuration": "8.0.0",
-          "Microsoft.Extensions.Configuration.Abstractions": "8.0.0",
-          "Microsoft.Extensions.Configuration.FileExtensions": "8.0.0",
-          "Microsoft.Extensions.FileProviders.Abstractions": "8.0.0",
-          "System.Text.Json": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.Extensions.Configuration.Json.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.Configuration.Json.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
-      "Microsoft.Extensions.DependencyInjection/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.Extensions.DependencyInjection.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.DependencyInjection.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
-      "Microsoft.Extensions.DependencyInjection.Abstractions/8.0.0": {
-        "type": "package",
-        "compile": {
-          "lib/net8.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.DependencyInjection.Abstractions.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
-      "Microsoft.Extensions.FileProviders.Abstractions/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.Extensions.Primitives": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.Extensions.FileProviders.Abstractions.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.FileProviders.Abstractions.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
-      "Microsoft.Extensions.FileProviders.Physical/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.Extensions.FileProviders.Abstractions": "8.0.0",
-          "Microsoft.Extensions.FileSystemGlobbing": "8.0.0",
-          "Microsoft.Extensions.Primitives": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.Extensions.FileProviders.Physical.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.FileProviders.Physical.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
-      "Microsoft.Extensions.FileSystemGlobbing/8.0.0": {
-        "type": "package",
-        "compile": {
-          "lib/net8.0/Microsoft.Extensions.FileSystemGlobbing.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.FileSystemGlobbing.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
-      "Microsoft.Extensions.Logging/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection": "8.0.0",
-          "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
-          "Microsoft.Extensions.Options": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.Extensions.Logging.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.Logging.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
-      "Microsoft.Extensions.Logging.Abstractions/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.Extensions.Logging.Abstractions.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.Logging.Abstractions.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/Microsoft.Extensions.Logging.Abstractions.targets": {}
-        }
-      },
-      "Microsoft.Extensions.Options/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0",
-          "Microsoft.Extensions.Primitives": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.Extensions.Options.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.Options.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/Microsoft.Extensions.Options.targets": {}
-        }
-      },
-      "Microsoft.Extensions.Primitives/8.0.0": {
-        "type": "package",
-        "compile": {
-          "lib/net8.0/Microsoft.Extensions.Primitives.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.Extensions.Primitives.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
-      "Microsoft.JSInterop/8.0.0": {
-        "type": "package",
-        "compile": {
-          "lib/net8.0/Microsoft.JSInterop.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.JSInterop.dll": {
-            "related": ".xml"
-          }
-        }
-      },
-      "Microsoft.JSInterop.WebAssembly/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "Microsoft.JSInterop": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/Microsoft.JSInterop.WebAssembly.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/Microsoft.JSInterop.WebAssembly.dll": {
-            "related": ".xml"
-          }
-        }
-      },
-      "Microsoft.NET.ILLink.Tasks/8.0.22": {
-        "type": "package",
-        "build": {
-          "build/Microsoft.NET.ILLink.Tasks.props": {}
-        }
-      },
-      "Microsoft.NET.Sdk.WebAssembly.Pack/10.0.1": {
-        "type": "package",
-        "build": {
-          "build/Microsoft.NET.Sdk.WebAssembly.Pack.props": {},
-          "build/Microsoft.NET.Sdk.WebAssembly.Pack.targets": {}
-        }
-      },
-      "System.IO.Pipelines/8.0.0": {
-        "type": "package",
-        "compile": {
-          "lib/net8.0/System.IO.Pipelines.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/System.IO.Pipelines.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
-      "System.Text.Encodings.Web/8.0.0": {
-        "type": "package",
-        "compile": {
-          "lib/net8.0/System.Text.Encodings.Web.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "runtimes/browser/lib/net8.0/System.Text.Encodings.Web.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/_._": {}
-        }
-      },
-      "System.Text.Json/8.0.0": {
-        "type": "package",
-        "dependencies": {
-          "System.Text.Encodings.Web": "8.0.0"
-        },
-        "compile": {
-          "lib/net8.0/System.Text.Json.dll": {
-            "related": ".xml"
-          }
-        },
-        "runtime": {
-          "lib/net8.0/System.Text.Json.dll": {
-            "related": ".xml"
-          }
-        },
-        "build": {
-          "buildTransitive/net6.0/System.Text.Json.targets": {}
+          "bin/placeholder/Squawk.dll": {}
         }
       }
     }
@@ -1078,171 +715,40 @@
         "microsoft.aspnetcore.components.webassembly.nuspec"
       ]
     },
-    "Microsoft.AspNetCore.Components.WebAssembly.DevServer/8.0.0": {
-      "sha512": "58fI3IAY1b4EfW/gw3H1kxWawgdowdp6kztoOFvxwZNCTDfEeM48Hlka5MWhCh71Um5ZMRqeYDjMta8UzHC+iA==",
+    "Microsoft.AspNetCore.Components.WebView/8.0.0": {
+      "sha512": "efT38dn43pA4EQMpJlbNWtsOtftUmeM2OypVtosIZd988jEnnXYlS0/4SPUPveUxu38gnWihvdqa90Sl9EjGqQ==",
       "type": "package",
-      "path": "microsoft.aspnetcore.components.webassembly.devserver/8.0.0",
-      "hasTools": true,
+      "path": "microsoft.aspnetcore.components.webview/8.0.0",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "Icon.png",
         "THIRD-PARTY-NOTICES.txt",
-        "build/Microsoft.AspNetCore.Components.WebAssembly.DevServer.targets",
-        "microsoft.aspnetcore.components.webassembly.devserver.8.0.0.nupkg.sha512",
-        "microsoft.aspnetcore.components.webassembly.devserver.nuspec",
-        "tools/ARM64/aspnetcorev2_inprocess.dll",
-        "tools/BlazorDebugProxy/BrowserDebugHost.dll",
-        "tools/BlazorDebugProxy/BrowserDebugHost.runtimeconfig.json",
-        "tools/BlazorDebugProxy/BrowserDebugProxy.dll",
-        "tools/BlazorDebugProxy/Microsoft.CodeAnalysis.CSharp.Scripting.dll",
-        "tools/BlazorDebugProxy/Microsoft.CodeAnalysis.CSharp.dll",
-        "tools/BlazorDebugProxy/Microsoft.CodeAnalysis.Scripting.dll",
-        "tools/BlazorDebugProxy/Microsoft.CodeAnalysis.dll",
-        "tools/BlazorDebugProxy/Microsoft.FileFormats.dll",
-        "tools/BlazorDebugProxy/Microsoft.NET.WebAssembly.Webcil.dll",
-        "tools/BlazorDebugProxy/Microsoft.SymbolStore.dll",
-        "tools/BlazorDebugProxy/Newtonsoft.Json.dll",
-        "tools/Microsoft.AspNetCore.Antiforgery.dll",
-        "tools/Microsoft.AspNetCore.Antiforgery.xml",
-        "tools/Microsoft.AspNetCore.Authentication.Abstractions.dll",
-        "tools/Microsoft.AspNetCore.Authentication.Abstractions.xml",
-        "tools/Microsoft.AspNetCore.Authentication.Core.dll",
-        "tools/Microsoft.AspNetCore.Authentication.Core.xml",
-        "tools/Microsoft.AspNetCore.Authentication.dll",
-        "tools/Microsoft.AspNetCore.Authentication.xml",
-        "tools/Microsoft.AspNetCore.Authorization.Policy.dll",
-        "tools/Microsoft.AspNetCore.Authorization.Policy.xml",
-        "tools/Microsoft.AspNetCore.Authorization.dll",
-        "tools/Microsoft.AspNetCore.Authorization.xml",
-        "tools/Microsoft.AspNetCore.Components.Authorization.dll",
-        "tools/Microsoft.AspNetCore.Components.Authorization.xml",
-        "tools/Microsoft.AspNetCore.Components.Endpoints.dll",
-        "tools/Microsoft.AspNetCore.Components.Endpoints.xml",
-        "tools/Microsoft.AspNetCore.Components.Forms.dll",
-        "tools/Microsoft.AspNetCore.Components.Forms.xml",
-        "tools/Microsoft.AspNetCore.Components.Web.dll",
-        "tools/Microsoft.AspNetCore.Components.Web.xml",
-        "tools/Microsoft.AspNetCore.Components.WebAssembly.Server.dll",
-        "tools/Microsoft.AspNetCore.Components.WebAssembly.Server.xml",
-        "tools/Microsoft.AspNetCore.Components.dll",
-        "tools/Microsoft.AspNetCore.Components.xml",
-        "tools/Microsoft.AspNetCore.Connections.Abstractions.dll",
-        "tools/Microsoft.AspNetCore.Connections.Abstractions.xml",
-        "tools/Microsoft.AspNetCore.Cryptography.Internal.dll",
-        "tools/Microsoft.AspNetCore.Cryptography.Internal.xml",
-        "tools/Microsoft.AspNetCore.DataProtection.Abstractions.dll",
-        "tools/Microsoft.AspNetCore.DataProtection.Abstractions.xml",
-        "tools/Microsoft.AspNetCore.DataProtection.Extensions.dll",
-        "tools/Microsoft.AspNetCore.DataProtection.Extensions.xml",
-        "tools/Microsoft.AspNetCore.DataProtection.dll",
-        "tools/Microsoft.AspNetCore.DataProtection.xml",
-        "tools/Microsoft.AspNetCore.Diagnostics.Abstractions.dll",
-        "tools/Microsoft.AspNetCore.Diagnostics.Abstractions.xml",
-        "tools/Microsoft.AspNetCore.Diagnostics.dll",
-        "tools/Microsoft.AspNetCore.Diagnostics.xml",
-        "tools/Microsoft.AspNetCore.HostFiltering.dll",
-        "tools/Microsoft.AspNetCore.HostFiltering.xml",
-        "tools/Microsoft.AspNetCore.Hosting.Abstractions.dll",
-        "tools/Microsoft.AspNetCore.Hosting.Abstractions.xml",
-        "tools/Microsoft.AspNetCore.Hosting.Server.Abstractions.dll",
-        "tools/Microsoft.AspNetCore.Hosting.Server.Abstractions.xml",
-        "tools/Microsoft.AspNetCore.Hosting.dll",
-        "tools/Microsoft.AspNetCore.Hosting.xml",
-        "tools/Microsoft.AspNetCore.Html.Abstractions.dll",
-        "tools/Microsoft.AspNetCore.Html.Abstractions.xml",
-        "tools/Microsoft.AspNetCore.Http.Abstractions.dll",
-        "tools/Microsoft.AspNetCore.Http.Abstractions.xml",
-        "tools/Microsoft.AspNetCore.Http.Extensions.dll",
-        "tools/Microsoft.AspNetCore.Http.Extensions.xml",
-        "tools/Microsoft.AspNetCore.Http.Features.dll",
-        "tools/Microsoft.AspNetCore.Http.Features.xml",
-        "tools/Microsoft.AspNetCore.Http.dll",
-        "tools/Microsoft.AspNetCore.Http.xml",
-        "tools/Microsoft.AspNetCore.HttpOverrides.dll",
-        "tools/Microsoft.AspNetCore.HttpOverrides.xml",
-        "tools/Microsoft.AspNetCore.Metadata.dll",
-        "tools/Microsoft.AspNetCore.Metadata.xml",
-        "tools/Microsoft.AspNetCore.Routing.Abstractions.dll",
-        "tools/Microsoft.AspNetCore.Routing.Abstractions.xml",
-        "tools/Microsoft.AspNetCore.Routing.dll",
-        "tools/Microsoft.AspNetCore.Routing.xml",
-        "tools/Microsoft.AspNetCore.Server.HttpSys.dll",
-        "tools/Microsoft.AspNetCore.Server.HttpSys.xml",
-        "tools/Microsoft.AspNetCore.Server.IIS.dll",
-        "tools/Microsoft.AspNetCore.Server.IIS.xml",
-        "tools/Microsoft.AspNetCore.Server.IISIntegration.dll",
-        "tools/Microsoft.AspNetCore.Server.IISIntegration.xml",
-        "tools/Microsoft.AspNetCore.Server.Kestrel.Core.dll",
-        "tools/Microsoft.AspNetCore.Server.Kestrel.Core.xml",
-        "tools/Microsoft.AspNetCore.Server.Kestrel.Transport.NamedPipes.dll",
-        "tools/Microsoft.AspNetCore.Server.Kestrel.Transport.NamedPipes.xml",
-        "tools/Microsoft.AspNetCore.Server.Kestrel.Transport.Quic.dll",
-        "tools/Microsoft.AspNetCore.Server.Kestrel.Transport.Quic.xml",
-        "tools/Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.dll",
-        "tools/Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets.xml",
-        "tools/Microsoft.AspNetCore.Server.Kestrel.dll",
-        "tools/Microsoft.AspNetCore.Server.Kestrel.xml",
-        "tools/Microsoft.AspNetCore.StaticFiles.dll",
-        "tools/Microsoft.AspNetCore.StaticFiles.xml",
-        "tools/Microsoft.AspNetCore.WebUtilities.dll",
-        "tools/Microsoft.AspNetCore.WebUtilities.xml",
-        "tools/Microsoft.AspNetCore.dll",
-        "tools/Microsoft.AspNetCore.xml",
-        "tools/Microsoft.Extensions.Configuration.Abstractions.dll",
-        "tools/Microsoft.Extensions.Configuration.Binder.dll",
-        "tools/Microsoft.Extensions.Configuration.CommandLine.dll",
-        "tools/Microsoft.Extensions.Configuration.EnvironmentVariables.dll",
-        "tools/Microsoft.Extensions.Configuration.FileExtensions.dll",
-        "tools/Microsoft.Extensions.Configuration.Json.dll",
-        "tools/Microsoft.Extensions.Configuration.UserSecrets.dll",
-        "tools/Microsoft.Extensions.Configuration.dll",
-        "tools/Microsoft.Extensions.DependencyInjection.Abstractions.dll",
-        "tools/Microsoft.Extensions.DependencyInjection.dll",
-        "tools/Microsoft.Extensions.Diagnostics.Abstractions.dll",
-        "tools/Microsoft.Extensions.Diagnostics.dll",
-        "tools/Microsoft.Extensions.Features.dll",
-        "tools/Microsoft.Extensions.Features.xml",
-        "tools/Microsoft.Extensions.FileProviders.Abstractions.dll",
-        "tools/Microsoft.Extensions.FileProviders.Composite.dll",
-        "tools/Microsoft.Extensions.FileProviders.Embedded.dll",
-        "tools/Microsoft.Extensions.FileProviders.Embedded.xml",
-        "tools/Microsoft.Extensions.FileProviders.Physical.dll",
-        "tools/Microsoft.Extensions.FileSystemGlobbing.dll",
-        "tools/Microsoft.Extensions.Hosting.Abstractions.dll",
-        "tools/Microsoft.Extensions.Hosting.dll",
-        "tools/Microsoft.Extensions.Logging.Abstractions.dll",
-        "tools/Microsoft.Extensions.Logging.Configuration.dll",
-        "tools/Microsoft.Extensions.Logging.Console.dll",
-        "tools/Microsoft.Extensions.Logging.Debug.dll",
-        "tools/Microsoft.Extensions.Logging.EventLog.dll",
-        "tools/Microsoft.Extensions.Logging.EventSource.dll",
-        "tools/Microsoft.Extensions.Logging.dll",
-        "tools/Microsoft.Extensions.ObjectPool.dll",
-        "tools/Microsoft.Extensions.ObjectPool.xml",
-        "tools/Microsoft.Extensions.Options.ConfigurationExtensions.dll",
-        "tools/Microsoft.Extensions.Options.dll",
-        "tools/Microsoft.Extensions.Primitives.dll",
-        "tools/Microsoft.Extensions.WebEncoders.dll",
-        "tools/Microsoft.Extensions.WebEncoders.xml",
-        "tools/Microsoft.JSInterop.dll",
-        "tools/Microsoft.JSInterop.xml",
-        "tools/Microsoft.Net.Http.Headers.dll",
-        "tools/Microsoft.Net.Http.Headers.xml",
-        "tools/System.Diagnostics.EventLog.dll",
-        "tools/System.IO.Pipelines.dll",
-        "tools/System.Security.Cryptography.Pkcs.dll",
-        "tools/System.Security.Cryptography.Xml.dll",
-        "tools/blazor-devserver.deps.json",
-        "tools/blazor-devserver.dll",
-        "tools/blazor-devserver.exe",
-        "tools/blazor-devserver.runtimeconfig.json",
-        "tools/blazor-devserver.xml",
-        "tools/runtimes/win/lib/net8.0/System.Diagnostics.EventLog.Messages.dll",
-        "tools/runtimes/win/lib/net8.0/System.Diagnostics.EventLog.dll",
-        "tools/runtimes/win/lib/net8.0/System.Security.Cryptography.Pkcs.dll",
-        "tools/x64/aspnetcorev2_inprocess.dll",
-        "tools/x86/aspnetcorev2_inprocess.dll"
+        "buildTransitive/any/Microsoft.AspNetCore.Components.WebView.props",
+        "lib/net8.0/Microsoft.AspNetCore.Components.WebView.dll",
+        "lib/net8.0/Microsoft.AspNetCore.Components.WebView.xml",
+        "microsoft.aspnetcore.components.webview.8.0.0.nupkg.sha512",
+        "microsoft.aspnetcore.components.webview.nuspec"
+      ]
+    },
+    "Microsoft.AspNetCore.Components.WebView.Wpf/8.0.3": {
+      "sha512": "9rmF/PWxYIhbxwX9dtRi7s4Ujk72bRFjsnTBCF1cEVwAsbnAnXVqWqp5RuaZjsTy7VsC8aFEtocYNXZ/MgI+nA==",
+      "type": "package",
+      "path": "microsoft.aspnetcore.components.webview.wpf/8.0.3",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.TXT",
+        "README.md",
+        "THIRD-PARTY-NOTICES.TXT",
+        "aspnet-icon.png",
+        "build/Microsoft.AspNetCore.Components.WebView.Wpf.props",
+        "build/Microsoft.AspNetCore.Components.WebView.Wpf.targets",
+        "lib/net8.0-windows7.0/Microsoft.AspNetCore.Components.WebView.Wpf.dll",
+        "lib/net8.0-windows7.0/Microsoft.AspNetCore.Components.WebView.Wpf.pdb",
+        "lib/net8.0-windows7.0/Microsoft.AspNetCore.Components.WebView.Wpf.xml",
+        "microsoft.aspnetcore.components.webview.wpf.8.0.3.nupkg.sha512",
+        "microsoft.aspnetcore.components.webview.wpf.nuspec"
       ]
     },
     "Microsoft.AspNetCore.Metadata/8.0.0": {
@@ -1519,6 +1025,58 @@
         "useSharedDesignerContext.txt"
       ]
     },
+    "Microsoft.Extensions.FileProviders.Composite/8.0.0": {
+      "sha512": "ynMjdZ5B3Fd3A9GxJaNhIcTrjLY1bXDQltyVIMVOxbT0ssTOCpFYWc977bVBAocB62fYWu/RN6/1HLnX/HjVuQ==",
+      "type": "package",
+      "path": "microsoft.extensions.fileproviders.composite/8.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "buildTransitive/net461/Microsoft.Extensions.FileProviders.Composite.targets",
+        "buildTransitive/net462/_._",
+        "buildTransitive/net6.0/_._",
+        "buildTransitive/netcoreapp2.0/Microsoft.Extensions.FileProviders.Composite.targets",
+        "lib/net462/Microsoft.Extensions.FileProviders.Composite.dll",
+        "lib/net462/Microsoft.Extensions.FileProviders.Composite.xml",
+        "lib/net6.0/Microsoft.Extensions.FileProviders.Composite.dll",
+        "lib/net6.0/Microsoft.Extensions.FileProviders.Composite.xml",
+        "lib/net7.0/Microsoft.Extensions.FileProviders.Composite.dll",
+        "lib/net7.0/Microsoft.Extensions.FileProviders.Composite.xml",
+        "lib/net8.0/Microsoft.Extensions.FileProviders.Composite.dll",
+        "lib/net8.0/Microsoft.Extensions.FileProviders.Composite.xml",
+        "lib/netstandard2.0/Microsoft.Extensions.FileProviders.Composite.dll",
+        "lib/netstandard2.0/Microsoft.Extensions.FileProviders.Composite.xml",
+        "microsoft.extensions.fileproviders.composite.8.0.0.nupkg.sha512",
+        "microsoft.extensions.fileproviders.composite.nuspec",
+        "useSharedDesignerContext.txt"
+      ]
+    },
+    "Microsoft.Extensions.FileProviders.Embedded/8.0.0": {
+      "sha512": "TuRh62KcoOvaSDCbtHT8K0WYptZysYQHPRRNfOgqF7ZUtUL4O0WMV8RdxbtDFJDsg3jv9bgHwXbrgwTeI9+5uQ==",
+      "type": "package",
+      "path": "microsoft.extensions.fileproviders.embedded/8.0.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "Icon.png",
+        "build/netstandard2.0/Microsoft.Extensions.FileProviders.Embedded.props",
+        "build/netstandard2.0/Microsoft.Extensions.FileProviders.Embedded.targets",
+        "buildMultiTargeting/Microsoft.Extensions.FileProviders.Embedded.props",
+        "buildMultiTargeting/Microsoft.Extensions.FileProviders.Embedded.targets",
+        "lib/net462/Microsoft.Extensions.FileProviders.Embedded.dll",
+        "lib/net462/Microsoft.Extensions.FileProviders.Embedded.xml",
+        "lib/net8.0/Microsoft.Extensions.FileProviders.Embedded.dll",
+        "lib/net8.0/Microsoft.Extensions.FileProviders.Embedded.xml",
+        "lib/netstandard2.0/Microsoft.Extensions.FileProviders.Embedded.dll",
+        "lib/netstandard2.0/Microsoft.Extensions.FileProviders.Embedded.xml",
+        "microsoft.extensions.fileproviders.embedded.8.0.0.nupkg.sha512",
+        "microsoft.extensions.fileproviders.embedded.nuspec",
+        "tasks/netstandard2.0/Microsoft.Extensions.FileProviders.Embedded.Manifest.Task.dll"
+      ]
+    },
     "Microsoft.Extensions.FileProviders.Physical/8.0.0": {
       "sha512": "UboiXxpPUpwulHvIAVE36Knq0VSHaAmfrFkegLyBZeaADuKezJ/AIXYAW8F5GBlGk/VaibN2k/Zn1ca8YAfVdA==",
       "type": "package",
@@ -1791,96 +1349,96 @@
         "microsoft.jsinterop.webassembly.nuspec"
       ]
     },
-    "Microsoft.NET.ILLink.Tasks/8.0.22": {
-      "sha512": "MhcMithKEiyyNkD2ZfbDZPmcOdi0GheGfg8saEIIEfD/fol3iHmcV8TsZkD4ZYz5gdUuoX4YtlVySUU7Sxl9SQ==",
+    "Microsoft.Web.WebView2/1.0.2045.28": {
+      "sha512": "QDsR/HCNjzqYZrIuNLxyfmOIqVfMq1iGyoBR3OVVlFl4NZ12T8jRC0MNpOReKfgwtO5zh8g+eBYR6RAXFltcVA==",
       "type": "package",
-      "path": "microsoft.net.illink.tasks/8.0.22",
+      "path": "microsoft.web.webview2/1.0.2045.28",
       "hasTools": true,
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
-        "Icon.png",
-        "LICENSE.TXT",
-        "Sdk/Sdk.props",
-        "THIRD-PARTY-NOTICES.TXT",
-        "analyzers/dotnet/cs/ILLink.CodeFixProvider.dll",
-        "analyzers/dotnet/cs/ILLink.RoslynAnalyzer.dll",
-        "build/Microsoft.NET.ILLink.Analyzers.props",
-        "build/Microsoft.NET.ILLink.Tasks.props",
-        "build/Microsoft.NET.ILLink.targets",
-        "microsoft.net.illink.tasks.8.0.22.nupkg.sha512",
-        "microsoft.net.illink.tasks.nuspec",
-        "tools/net472/ILLink.Tasks.dll",
-        "tools/net472/ILLink.Tasks.dll.config",
-        "tools/net472/Mono.Cecil.Mdb.dll",
-        "tools/net472/Mono.Cecil.Pdb.dll",
-        "tools/net472/Mono.Cecil.Rocks.dll",
-        "tools/net472/Mono.Cecil.dll",
-        "tools/net472/Sdk/Sdk.props",
-        "tools/net472/System.Buffers.dll",
-        "tools/net472/System.Collections.Immutable.dll",
-        "tools/net472/System.Memory.dll",
-        "tools/net472/System.Numerics.Vectors.dll",
-        "tools/net472/System.Reflection.Metadata.dll",
-        "tools/net472/System.Runtime.CompilerServices.Unsafe.dll",
-        "tools/net472/build/Microsoft.NET.ILLink.Analyzers.props",
-        "tools/net472/build/Microsoft.NET.ILLink.Tasks.props",
-        "tools/net472/build/Microsoft.NET.ILLink.targets",
-        "tools/net8.0/ILLink.Tasks.deps.json",
-        "tools/net8.0/ILLink.Tasks.dll",
-        "tools/net8.0/Mono.Cecil.Mdb.dll",
-        "tools/net8.0/Mono.Cecil.Pdb.dll",
-        "tools/net8.0/Mono.Cecil.Rocks.dll",
-        "tools/net8.0/Mono.Cecil.dll",
-        "tools/net8.0/Sdk/Sdk.props",
-        "tools/net8.0/build/Microsoft.NET.ILLink.Analyzers.props",
-        "tools/net8.0/build/Microsoft.NET.ILLink.Tasks.props",
-        "tools/net8.0/build/Microsoft.NET.ILLink.targets",
-        "tools/net8.0/illink.deps.json",
-        "tools/net8.0/illink.dll",
-        "tools/net8.0/illink.runtimeconfig.json",
-        "useSharedDesignerContext.txt"
-      ]
-    },
-    "Microsoft.NET.Sdk.WebAssembly.Pack/10.0.1": {
-      "sha512": "8XSP0Wu0xpj3xr88WwW43GiklXXiM27n6V8CXk35wT1MjxCfmudQJYmLbirWiPiqU1vCIWTIczPpI40ivC3ruQ==",
-      "type": "package",
-      "path": "microsoft.net.sdk.webassembly.pack/10.0.1",
-      "hasTools": true,
-      "files": [
-        ".nupkg.metadata",
-        ".signature.p7s",
-        "Icon.png",
-        "THIRD-PARTY-NOTICES.TXT",
-        "WasmAppHost/BrowserDebugHost.deps.json",
-        "WasmAppHost/BrowserDebugHost.dll",
-        "WasmAppHost/BrowserDebugHost.runtimeconfig.json",
-        "WasmAppHost/BrowserDebugHost.staticwebassets.endpoints.json",
-        "WasmAppHost/BrowserDebugProxy.dll",
-        "WasmAppHost/Microsoft.CodeAnalysis.CSharp.Scripting.dll",
-        "WasmAppHost/Microsoft.CodeAnalysis.CSharp.dll",
-        "WasmAppHost/Microsoft.CodeAnalysis.Scripting.dll",
-        "WasmAppHost/Microsoft.CodeAnalysis.dll",
-        "WasmAppHost/Microsoft.FileFormats.dll",
-        "WasmAppHost/Microsoft.NET.WebAssembly.Webcil.dll",
-        "WasmAppHost/Microsoft.SymbolStore.dll",
-        "WasmAppHost/Newtonsoft.Json.dll",
-        "WasmAppHost/WasmAppHost.deps.json",
-        "WasmAppHost/WasmAppHost.dll",
-        "WasmAppHost/WasmAppHost.runtimeconfig.json",
-        "WasmAppHost/WasmAppHost.staticwebassets.endpoints.json",
-        "build/Microsoft.NET.Sdk.WebAssembly.Browser.props",
-        "build/Microsoft.NET.Sdk.WebAssembly.Browser.targets",
-        "build/Microsoft.NET.Sdk.WebAssembly.Pack.props",
-        "build/Microsoft.NET.Sdk.WebAssembly.Pack.targets",
-        "build/Wasm.web.config",
-        "build/browser.runtimeconfig.template.json",
-        "microsoft.net.sdk.webassembly.pack.10.0.1.nupkg.sha512",
-        "microsoft.net.sdk.webassembly.pack.nuspec",
-        "tools/net10.0/Microsoft.NET.Sdk.WebAssembly.Pack.Tasks.dll",
-        "tools/net10.0/Microsoft.NET.WebAssembly.Webcil.dll",
-        "tools/net472/Microsoft.NET.Sdk.WebAssembly.Pack.Tasks.dll",
-        "tools/net472/Microsoft.NET.WebAssembly.Webcil.dll"
+        "LICENSE.txt",
+        "NOTICE.txt",
+        "WebView2.idl",
+        "WebView2.tlb",
+        "build/Common.targets",
+        "build/Microsoft.Web.WebView2.targets",
+        "build/WebView2Rules.Project.xml",
+        "build/native/Microsoft.Web.WebView2.targets",
+        "build/native/arm64/WebView2Loader.dll",
+        "build/native/arm64/WebView2Loader.dll.lib",
+        "build/native/arm64/WebView2LoaderStatic.lib",
+        "build/native/include-winrt/WebView2Interop.h",
+        "build/native/include-winrt/WebView2Interop.idl",
+        "build/native/include-winrt/WebView2Interop.tlb",
+        "build/native/include/WebView2.h",
+        "build/native/include/WebView2EnvironmentOptions.h",
+        "build/native/x64/WebView2Loader.dll",
+        "build/native/x64/WebView2Loader.dll.lib",
+        "build/native/x64/WebView2LoaderStatic.lib",
+        "build/native/x86/WebView2Loader.dll",
+        "build/native/x86/WebView2Loader.dll.lib",
+        "build/native/x86/WebView2LoaderStatic.lib",
+        "build/wv2winrt.targets",
+        "lib/Microsoft.Web.WebView2.Core.winmd",
+        "lib/net45/Microsoft.Web.WebView2.Core.dll",
+        "lib/net45/Microsoft.Web.WebView2.Core.xml",
+        "lib/net45/Microsoft.Web.WebView2.WinForms.dll",
+        "lib/net45/Microsoft.Web.WebView2.WinForms.xml",
+        "lib/net45/Microsoft.Web.WebView2.Wpf.dll",
+        "lib/net45/Microsoft.Web.WebView2.Wpf.xml",
+        "lib/netcoreapp3.0/Microsoft.Web.WebView2.Core.dll",
+        "lib/netcoreapp3.0/Microsoft.Web.WebView2.Core.xml",
+        "lib/netcoreapp3.0/Microsoft.Web.WebView2.WinForms.dll",
+        "lib/netcoreapp3.0/Microsoft.Web.WebView2.WinForms.xml",
+        "lib/netcoreapp3.0/Microsoft.Web.WebView2.Wpf.dll",
+        "lib/netcoreapp3.0/Microsoft.Web.WebView2.Wpf.xml",
+        "microsoft.web.webview2.1.0.2045.28.nupkg.sha512",
+        "microsoft.web.webview2.nuspec",
+        "runtimes/win-arm64/native/WebView2Loader.dll",
+        "runtimes/win-arm64/native_uap/Microsoft.Web.WebView2.Core.dll",
+        "runtimes/win-x64/native/WebView2Loader.dll",
+        "runtimes/win-x64/native_uap/Microsoft.Web.WebView2.Core.dll",
+        "runtimes/win-x86/native/WebView2Loader.dll",
+        "runtimes/win-x86/native_uap/Microsoft.Web.WebView2.Core.dll",
+        "tools/VisualStudioToolsManifest.xml",
+        "tools/wv2winrt/Antlr3.Runtime.dll",
+        "tools/wv2winrt/Antlr4.StringTemplate.dll",
+        "tools/wv2winrt/System.Buffers.dll",
+        "tools/wv2winrt/System.CommandLine.DragonFruit.dll",
+        "tools/wv2winrt/System.CommandLine.Rendering.dll",
+        "tools/wv2winrt/System.CommandLine.dll",
+        "tools/wv2winrt/System.Memory.dll",
+        "tools/wv2winrt/System.Numerics.Vectors.dll",
+        "tools/wv2winrt/System.Runtime.CompilerServices.Unsafe.dll",
+        "tools/wv2winrt/codegen_util.dll",
+        "tools/wv2winrt/concrt140_app.dll",
+        "tools/wv2winrt/cs/System.CommandLine.resources.dll",
+        "tools/wv2winrt/de/System.CommandLine.resources.dll",
+        "tools/wv2winrt/es/System.CommandLine.resources.dll",
+        "tools/wv2winrt/fr/System.CommandLine.resources.dll",
+        "tools/wv2winrt/it/System.CommandLine.resources.dll",
+        "tools/wv2winrt/ja/System.CommandLine.resources.dll",
+        "tools/wv2winrt/ko/System.CommandLine.resources.dll",
+        "tools/wv2winrt/msvcp140_1_app.dll",
+        "tools/wv2winrt/msvcp140_2_app.dll",
+        "tools/wv2winrt/msvcp140_app.dll",
+        "tools/wv2winrt/pl/System.CommandLine.resources.dll",
+        "tools/wv2winrt/pt-BR/System.CommandLine.resources.dll",
+        "tools/wv2winrt/ru/System.CommandLine.resources.dll",
+        "tools/wv2winrt/tr/System.CommandLine.resources.dll",
+        "tools/wv2winrt/type_hierarchy.dll",
+        "tools/wv2winrt/vcamp140_app.dll",
+        "tools/wv2winrt/vccorlib140_app.dll",
+        "tools/wv2winrt/vcomp140_app.dll",
+        "tools/wv2winrt/vcruntime140_app.dll",
+        "tools/wv2winrt/winrt_winmd.dll",
+        "tools/wv2winrt/winrt_winmd.winmd",
+        "tools/wv2winrt/wv2winrt.exe",
+        "tools/wv2winrt/wv2winrt.exe.config",
+        "tools/wv2winrt/wv2winrt.xml",
+        "tools/wv2winrt/zh-Hans/System.CommandLine.resources.dll",
+        "tools/wv2winrt/zh-Hant/System.CommandLine.resources.dll"
       ]
     },
     "System.IO.Pipelines/8.0.0": {
@@ -2019,14 +1577,17 @@
         "system.text.json.nuspec",
         "useSharedDesignerContext.txt"
       ]
+    },
+    "Squawk/1.0.0": {
+      "type": "project",
+      "path": "../Squawk.csproj",
+      "msbuildProject": "../Squawk.csproj"
     }
   },
   "projectFileDependencyGroups": {
-    "net8.0": [
-      "Microsoft.AspNetCore.Components.WebAssembly >= 8.0.0",
-      "Microsoft.AspNetCore.Components.WebAssembly.DevServer >= 8.0.0",
-      "Microsoft.NET.ILLink.Tasks >= 8.0.22",
-      "Microsoft.NET.Sdk.WebAssembly.Pack >= 10.0.1"
+    "net8.0-windows7.0": [
+      "Microsoft.AspNetCore.Components.WebView.Wpf >= 8.0.0",
+      "Squawk >= 1.0.0"
     ]
   },
   "packageFolders": {
@@ -2035,25 +1596,29 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\user\\Music\\Squawk\\Squawk\\Squawk\\Squawk.csproj",
-      "projectName": "Squawk",
-      "projectPath": "C:\\Users\\user\\Music\\Squawk\\Squawk\\Squawk\\Squawk.csproj",
+      "projectUniqueName": "C:\\Users\\user\\Music\\Squawk\\Squawk\\Squawk\\Squawk.Desktop\\Squawk.Desktop.csproj",
+      "projectName": "Squawk.Desktop",
+      "projectPath": "C:\\Users\\user\\Music\\Squawk\\Squawk\\Squawk\\Squawk.Desktop\\Squawk.Desktop.csproj",
       "packagesPath": "C:\\Users\\user\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\user\\Music\\Squawk\\Squawk\\Squawk\\obj\\",
+      "outputPath": "C:\\Users\\user\\Music\\Squawk\\Squawk\\Squawk\\Squawk.Desktop\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\user\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
-        "net8.0"
+        "net8.0-windows"
       ],
       "sources": {
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
-        "net8.0": {
-          "targetAlias": "net8.0",
-          "projectReferences": {}
+        "net8.0-windows7.0": {
+          "targetAlias": "net8.0-windows",
+          "projectReferences": {
+            "C:\\Users\\user\\Music\\Squawk\\Squawk\\Squawk\\Squawk.csproj": {
+              "projectPath": "C:\\Users\\user\\Music\\Squawk\\Squawk\\Squawk\\Squawk.csproj"
+            }
+          }
         }
       },
       "warningProperties": {
@@ -2069,29 +1634,12 @@
       "SdkAnalysisLevel": "10.0.100"
     },
     "frameworks": {
-      "net8.0": {
-        "targetAlias": "net8.0",
+      "net8.0-windows7.0": {
+        "targetAlias": "net8.0-windows",
         "dependencies": {
-          "Microsoft.AspNetCore.Components.WebAssembly": {
+          "Microsoft.AspNetCore.Components.WebView.Wpf": {
             "target": "Package",
             "version": "[8.0.0, )"
-          },
-          "Microsoft.AspNetCore.Components.WebAssembly.DevServer": {
-            "suppressParent": "All",
-            "target": "Package",
-            "version": "[8.0.0, )"
-          },
-          "Microsoft.NET.ILLink.Tasks": {
-            "suppressParent": "All",
-            "target": "Package",
-            "version": "[8.0.22, )",
-            "autoReferenced": true
-          },
-          "Microsoft.NET.Sdk.WebAssembly.Pack": {
-            "suppressParent": "All",
-            "target": "Package",
-            "version": "[10.0.1, )",
-            "autoReferenced": true
           }
         },
         "imports": [
@@ -2111,11 +1659,11 @@
             "version": "[8.0.22, 8.0.22]"
           },
           {
-            "name": "Microsoft.NETCore.App.Ref",
+            "name": "Microsoft.NETCore.App.Host.win-x64",
             "version": "[8.0.22, 8.0.22]"
           },
           {
-            "name": "Microsoft.NETCore.App.Runtime.Mono.browser-wasm",
+            "name": "Microsoft.NETCore.App.Ref",
             "version": "[8.0.22, 8.0.22]"
           },
           {
@@ -2126,15 +1674,25 @@
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
+          },
+          "Microsoft.WindowsDesktop.App.WPF": {
+            "privateAssets": "none"
           }
         },
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.101/PortableRuntimeIdentifierGraph.json"
       }
-    },
-    "runtimes": {
-      "browser-wasm": {
-        "#import": []
-      }
     }
-  }
+  },
+  "logs": [
+    {
+      "code": "NU1603",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Squawk.Desktop jest zależny od Microsoft.AspNetCore.Components.WebView.Wpf (>= 8.0.0), ale Microsoft.AspNetCore.Components.WebView.Wpf 8.0.0 nie został znaleziony. Zamiast tego Microsoft.AspNetCore.Components.WebView.Wpf 8.0.3 został rozwiązany.",
+      "libraryId": "Microsoft.AspNetCore.Components.WebView.Wpf",
+      "targetGraphs": [
+        "net8.0-windows7.0"
+      ]
+    }
+  ]
 }

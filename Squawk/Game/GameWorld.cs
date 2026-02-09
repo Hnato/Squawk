@@ -180,7 +180,7 @@ namespace Squawk.Game
 
         void HandleCollisions()
         {
-            foreach (var p in Parrots)
+            foreach (var p in Parrots.ToList())
             {
                 if (!p.IsAlive) continue;
                 if (MapBounds.Outside(p.Position))

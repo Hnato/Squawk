@@ -1033,3 +1033,14 @@ E:\Squawk.io\Squawk\obj\Debug\net8.0\compressed\kml3v0xcam-{0}-oyz0vx2fzb-oyz0vx
 E:\Squawk.io\Squawk\obj\Debug\net8.0\compressed\fjflv8esum-{0}-v4xzolfgc0-v4xzolfgc0.gz
 E:\Squawk.io\Squawk\obj\Debug\net8.0\compressed\tia5l9l6wx-{0}-rea3rd2h9m-rea3rd2h9m.gz
 E:\Squawk.io\Squawk\obj\Debug\net8.0\compressed\8q4yn86aqb-{0}-g80zu5ipe2-g80zu5ipe2.gz
+C:\Users\user\Music\Squawk\Squawk\Squawk\obj\Debug\net8.0\Squawk.csproj.AssemblyReference.cache
+C:\Users\user\Music\Squawk\Squawk\Squawk\obj\Debug\net8.0\rpswa.dswa.cache.json
+C:\Users\user\Music\Squawk\Squawk\Squawk\obj\Debug\net8.0\Squawk.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\user\Music\Squawk\Squawk\Squawk\obj\Debug\net8.0\Squawk.AssemblyInfoInputs.cache
+C:\Users\user\Music\Squawk\Squawk\Squawk\obj\Debug\net8.0\Squawk.AssemblyInfo.cs
+C:\Users\user\Music\Squawk\Squawk\Squawk\obj\Debug\net8.0\Squawk.csproj.CoreCompileInputs.cache
+C:\Users\user\Music\Squawk\Squawk\Squawk\obj\Debug\net8.0\Squawk.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\user\Music\Squawk\Squawk\Squawk\obj\Debug\net8.0\Squawk.sourcelink.json
+C:\Users\user\Music\Squawk\Squawk\Squawk\obj\Debug\net8.0\Squawk.dll
+C:\Users\user\Music\Squawk\Squawk\Squawk\obj\Debug\net8.0\refint\Squawk.dll
+C:\Users\user\Music\Squawk\Squawk\Squawk\obj\Debug\net8.0\Squawk.pdb

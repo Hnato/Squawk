@@ -54,7 +54,12 @@
         const light = Math.max(35, 65 - i * 1.0);
         ctx.fillStyle = `hsl(${hue},80%,${light}%)`;
         ctx.beginPath();
-        ctx.ellipse(s.x, s.y, s.r * 1.15, s.r * 0.85, Math.atan2(p.diry, p.dirx), 0, Math.PI * 2);
+        let angle = Math.atan2(p.diry, p.dirx);
+        if (i > 0) {
+            const prev = p.segments[i - 1];
+            angle = Math.atan2(prev.y - s.y, prev.x - s.x);
+        }
+        ctx.ellipse(s.x, s.y, s.r * 1.15, s.r * 0.85, angle, 0, Math.PI * 2);
         ctx.fill();
       }
       // Head with beak and eye

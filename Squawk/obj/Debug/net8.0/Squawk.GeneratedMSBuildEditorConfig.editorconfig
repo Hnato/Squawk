@@ -15,25 +15,25 @@ build_property.EnforceExtendedAnalyzerRules =
 build_property._SupportedPlatformList = browser
 build_property.RootNamespace = Squawk
 build_property.RootNamespace = Squawk
-build_property.ProjectDir = E:\Squawk.io\Squawk\
+build_property.ProjectDir = C:\Users\user\Music\Squawk\Squawk\Squawk\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = false
 build_property.RazorLangVersion = 8.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = E:\Squawk.io\Squawk
+build_property.MSBuildProjectDirectory = C:\Users\user\Music\Squawk\Squawk\Squawk
 build_property._RazorSourceGeneratorDebug = 
 build_property.EffectiveAnalysisLevelStyle = 8.0
 build_property.EnableCodeStyleSeverity = 
 
-[E:/Squawk.io/Squawk/App.razor]
+[C:/Users/user/Music/Squawk/Squawk/Squawk/App.razor]
 build_metadata.AdditionalFiles.TargetPath = QXBwLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
-[E:/Squawk.io/Squawk/Pages/Index.razor]
+[C:/Users/user/Music/Squawk/Squawk/Squawk/Pages/Index.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSW5kZXgucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
 
-[E:/Squawk.io/Squawk/_Imports.razor]
+[C:/Users/user/Music/Squawk/Squawk/Squawk/_Imports.razor]
 build_metadata.AdditionalFiles.TargetPath = X0ltcG9ydHMucmF6b3I=
 build_metadata.AdditionalFiles.CssScope = 
