@@ -1,0 +1,3 @@
+C:\Users\user\Music\Squawk\Squawk\Squawk\publish_wasm_final_2\Squawk.runtimeconfig.json
+C:\Users\user\Music\Squawk\Squawk\Squawk\publish_wasm_final_2\dotnet.js
+C:\Users\user\Music\Squawk\Squawk\Squawk\publish_wasm_final_2\web.config

@@ -1,0 +1,4 @@
+C:\Users\user\Music\Squawk\Squawk\Squawk\publish_test\wwwroot\index.html
+C:\Users\user\Music\Squawk\Squawk\Squawk\publish_test\TestWasm.runtimeconfig.json
+C:\Users\user\Music\Squawk\Squawk\Squawk\publish_test\dotnet.js
+C:\Users\user\Music\Squawk\Squawk\Squawk\publish_test\web.config

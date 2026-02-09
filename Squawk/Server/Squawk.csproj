@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Squawk.Desktop\**" />
+    <Content Remove="Squawk.Desktop\**" />
+    <EmbeddedResource Remove="Squawk.Desktop\**" />
+    <None Remove="Squawk.Desktop\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\Client\**" Exclude="..\Client\_framework\**;..\Client\bin\**;..\Client\obj\**">
+      <Link>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</Link>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.1" PrivateAssets="all" />
+  </ItemGroup>
+</Project>
