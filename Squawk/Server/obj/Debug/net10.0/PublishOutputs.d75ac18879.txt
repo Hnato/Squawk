@@ -1,6 +1,0 @@
-C:\Users\user\Music\Squawk\Squawk\Squawk\Server\publish_output\publish_output\web.config
-C:\Users\user\Music\Squawk\Squawk\Squawk\Server\publish_output\publish_output\Squawk.runtimeconfig.json
-C:\Users\user\Music\Squawk\Squawk\Squawk\Server\publish_output\publish_output\Squawk.staticwebassets.endpoints.json
-C:\Users\user\Music\Squawk\Squawk\Squawk\Server\publish_output\Squawk.runtimeconfig.json
-C:\Users\user\Music\Squawk\Squawk\Squawk\Server\publish_output\dotnet.js
-C:\Users\user\Music\Squawk\Squawk\Squawk\Server\publish_output\web.config

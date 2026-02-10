@@ -1,3 +1,0 @@
-C:\Users\user\Music\Squawk\Squawk\Squawk\publish_wasm_with_index\Squawk.runtimeconfig.json
-C:\Users\user\Music\Squawk\Squawk\Squawk\publish_wasm_with_index\dotnet.js
-C:\Users\user\Music\Squawk\Squawk\Squawk\publish_wasm_with_index\web.config

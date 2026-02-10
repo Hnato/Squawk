@@ -1,0 +1,227 @@
+@page "/"
+@page "/index.html"
+@page "/Client/index.html"
+@inject IJSRuntime JS
+@inject Squawk.Game.GameEngine Engine
+@inject Squawk.Game.GameWorld World
+@implements IDisposable
+
+<div id="game-root">
+    <canvas @ref="canvas"></canvas>
+    <div class="hud">
+        <div>Gracz: @(MyPlayer?.Name ?? "—")</div>
+        <div>Energia: @MathF.Round(MyPlayer?.Energy ?? 0, 1)</div>
+        <div>Rozmiar: @MathF.Round(MyPlayer?.Size ?? 0, 1)</div>
+        <div>Stan: @(MyPlayer != null ? (MyPlayer.IsAlive ? "Żyje" : "Nie żyje") : "Brak")</div>
+    </div>
+    <div class="leaderboard">
+        <div><strong>Ranking</strong></div>
+        @if (World != null)
+        {
+            foreach (var e in World.Leaderboard())
+            {
+                <div>@e.Name: @MathF.Round(e.Energy,1)</div>
+            }
+        }
+    </div>
+    @if (MyPlayer == null || !MyPlayer.IsAlive || !joined)
+    {
+        <div class="join-overlay">
+            <div class="panel">
+                <div style="font-weight:600;margin-bottom:8px;">Twoje imię papugi</div>
+                <input @bind="playerName" placeholder="np. Ara" autofocus @onkeydown="HandleKey" />
+                <button @onclick="Join">Start</button>
+                <div class="hint">Papuga pojawi się min. 100 jednostek od innych. Po śmierci możesz dołączyć ponownie.</div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    ElementReference canvas;
+    string playerId = Guid.NewGuid().ToString(); // Temporary Session ID until Auth
+    Squawk.Game.Parrot? MyPlayer => World.GetPlayer(playerId);
+    
+    bool initialized;
+    bool joined;
+    string playerName = "";
+    System.Threading.CancellationTokenSource? cts;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!initialized)
+        {
+            initialized = true;
+            await JS.InvokeVoidAsync("SquawkGame.init", canvas);
+            cts = new System.Threading.CancellationTokenSource();
+            _ = Loop(cts.Token);
+            Engine.OnStateUpdated += OnGameStateUpdated;
+        }
+    }
+
+    private void OnGameStateUpdated(Squawk.Game.GameWorld world)
+    {
+        // This runs on background thread!
+        // We can't invoke JS directly here efficiently for all users if this was real SignalR.
+        // But since Index.razor is "Server Side Blazor", we can trigger a render or send data.
+        // However, Blazor Server doesn't like high frequency updates via StateHasChanged.
+        // The Loop() method below handles the "Send to Client" part.
+    }
+
+    async Task Loop(System.Threading.CancellationToken token)
+    {
+        // This loop now runs at ~60Hz (or whatever network rate we want) to send data to Client
+        // It does NOT run the game logic.
+        while (!token.IsCancellationRequested)
+        {
+            Squawk.Game.InputState input;
+            if (JS is IJSInProcessRuntime jsSync)
+                input = jsSync.Invoke<Squawk.Game.InputState>("SquawkGame.getInput");
+            else
+                input = await JS.InvokeAsync<Squawk.Game.InputState>("SquawkGame.getInput");
+
+            // Send Input to Engine
+            Engine.EnqueueInput(playerId, input);
+
+            // Check if dead
+            if (MyPlayer != null && !MyPlayer.IsAlive) joined = false;
+
+            // Prepare Payload
+            var cam = CameraFor(MyPlayer);
+            var payload = BuildPayload(cam, input.w, input.h);
+
+            // Send to JS
+            if (JS is IJSInProcessRuntime jsSyncDraw)
+                jsSyncDraw.InvokeVoid("SquawkGame.draw", payload);
+            else
+                await JS.InvokeVoidAsync("SquawkGame.draw", payload);
+
+            // UI Update (less frequent)
+            await InvokeAsync(StateHasChanged);
+            
+            // Wait for next frame (Network Tick)
+            // If we want 60FPS updates to client: 16ms
+            // If we want 30FPS updates: 33ms
+            await Task.Delay(33, token);
+        }
+    }
+
+    (float x, float y, float zoom) CameraFor(Squawk.Game.Parrot? p)
+    {
+        if (p == null) return (0f, 0f, 1f);
+        var size = p.Size;
+        var zoom = Math.Clamp(1.1f - size * 0.004f, 0.6f, 1.2f);
+        return (p.Position.X, p.Position.Y, zoom);
+    }
+
+    object BuildPayload((float x, float y, float zoom) cam, float screenW, float screenH)
+    {
+        var radius = World.MapRadius;
+        
+        // Calculate viewport
+        // Safety check for screenW/H
+        if (screenW <= 100) screenW = 800;
+        if (screenH <= 100) screenH = 600;
+        if (screenW > 4000) screenW = 4000;
+        if (screenH > 4000) screenH = 4000;
+
+        float visibleW = screenW / cam.zoom;
+        float visibleH = screenH / cam.zoom;
+        
+        // Add minimal padding to avoid pop-in
+        float pad = 100;
+        float left = cam.x - visibleW / 2 - pad;
+        float right = cam.x + visibleW / 2 + pad;
+        float top = cam.y - visibleH / 2 - pad;
+        float bottom = cam.y + visibleH / 2 + pad;
+
+        // Optimized Culling
+        // Send ONLY what is visible.
+        
+        var feathers = World.Feathers
+            .Where(f => f.Position.X > left && f.Position.X < right && f.Position.Y > top && f.Position.Y < bottom)
+            .Select(f => new { x = (int)f.Position.X, y = (int)f.Position.Y, v = (int)(f.Value*10), t = f.Type == Squawk.Game.FeatherType.WorldFeather ? 0 : f.Type == Squawk.Game.FeatherType.BoostFeather ? 1 : 2, h = (int)f.Hue })
+            .ToArray();
+            
+        // Also cull parrots?
+        // Yes, if user wants "only load where player is".
+        // But keep top 3 for leaderboard just in case? No, leaderboard is separate UI.
+        // We only send parrots for Rendering.
+        
+        var parrots = World.Parrots.Where(p => p.IsAlive).Where(p => 
+            p.Position.X > left && p.Position.X < right && p.Position.Y > top && p.Position.Y < bottom
+        ).Select(p => new
+        {
+            i = p.Name,
+            x = (int)p.Position.X,
+            y = (int)p.Position.Y,
+            dx = (float)Math.Round(p.Direction.X, 3),
+            dy = (float)Math.Round(p.Direction.Y, 3),
+            e = (float)Math.Round(p.Energy, 1),
+            h = (int)p.Hue,
+            nm = p.DisplayName
+        }).ToArray();
+        
+        // Always include Myself even if somehow out of bounds (shouldn't happen if camera follows me)
+        // But CameraFor(MyPlayer) centers on me, so I am always in center.
+        
+        // Add timestamp for interpolation
+        long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        return new
+        {
+            camera = new { x = (int)cam.x, y = (int)cam.y, zoom = (float)Math.Round(cam.zoom, 3) },
+            mapRadius = radius,
+            feathers,
+            parrots,
+            ts = timestamp
+        };
+    }
+
+    void Join()
+    {
+        // Need to pass ID to AddPlayer or rename Player
+        // Current AddPlayer just adds a parrot with name.
+        // We need to associate it with 'playerId' (which is the session guid)
+        // Let's modify AddPlayer in GameWorld later to accept ID or use Name as ID.
+        // For now, assume Name is Unique or we pass ID as name? 
+        // User wants "Imie papugi".
+        
+        // Quick hack: Use "Name#Guid" internally or just match by Name if unique.
+        // But better: World.AddPlayer(playerId, playerName);
+        
+        // Since I can't easily change GameWorld signature in this SearchReplace block without verifying it matches existing logic perfectly,
+        // I will rely on Name for now but use playerId as the key for Input.
+        // Wait, ApplyInput uses playerId to find the parrot.
+        // So the Parrot MUST have Name == playerId OR we need a map.
+        // Let's set the Parrot Name to playerId for logic, but have a "DisplayName" property?
+        // Or just use playerId as Name and ignore display name for a moment?
+        // The UI shows p.Name.
+        
+        // Let's use playerId as the unique Name passed to AddPlayer.
+        // But the user enters a name.
+        // I'll fix GameWorld to support ID separate from Name or just use Name as ID (assuming unique for now).
+        // If I use Name as ID, duplicates will clash.
+        // I will invoke a separate tool to fix GameWorld.AddPlayer to take (id, name).
+        
+        // For this file, I'll assume AddPlayer(playerId, playerName) exists.
+        // I will implement it in next tool call.
+        World.AddPlayer(playerId, playerName);
+        joined = true;
+    }
+
+    void HandleKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            Join();
+        }
+    }
+    
+    public void Dispose()
+    {
+        cts?.Cancel();
+        Engine.OnStateUpdated -= OnGameStateUpdated;
+    }
+}
+

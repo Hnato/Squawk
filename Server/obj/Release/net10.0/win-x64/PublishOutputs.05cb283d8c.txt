@@ -1,0 +1,3 @@
+C:\Users\user\Music\Squawk\Squawk\TempPublish\web.config
+C:\Users\user\Music\Squawk\Squawk\TempPublish\BlazorDebugProxy\BrowserDebugHost.runtimeconfig.json
+C:\Users\user\Music\Squawk\Squawk\TempPublish\Squawk.exe
