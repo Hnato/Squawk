@@ -273,29 +273,16 @@
     // Parrots (Optimized Snake Rendering)
     for (const p of state.parrots.values()) {
         if (p.segments.length > 0) {
-            // Draw body as a single continuous line (much faster than N circles)
-            // Stroke line
-            ctx.beginPath();
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.lineWidth = p.size * 1.8; // Slightly less than 2x to account for overlap? No, 2*radius is diameter. p.size is approx radius or diameter?
-            // p.size calculation: 8 + sqrt(energy)*0.9. Default ~10.
-            // Segments have r = size * 0.8. So diameter is size * 1.6.
-            // Let's use p.size * 1.6
+            // Revert to circles because user said snake is invisible with lines.
+            // Circles are robust. To optimize, we can use a single Path2D for all circles.
             
-            ctx.strokeStyle = `hsl(${p.hue}, 70%, 50%)`;
-            
-            // Move to head
-            ctx.moveTo(p.visualX, p.visualY);
-            
+            const bodyPath = new Path2D();
             for (const s of p.segments) {
-                 ctx.lineTo(s.x, s.y);
+                 bodyPath.moveTo(s.x + s.r, s.y);
+                 bodyPath.arc(s.x, s.y, s.r, 0, Math.PI * 2);
             }
-            
-            ctx.stroke();
-            
-            // Optional: Draw Head circle specifically to round it off perfectly?
-            // lineCap round handles it mostly.
+            ctx.fillStyle = `hsl(${p.hue}, 70%, 50%)`;
+            ctx.fill(bodyPath);
         }
         
         // Name

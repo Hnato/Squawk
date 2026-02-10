@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Squawk")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cfd4dc5e32796c0e8cda417d85e2d6353fab8977")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+350d466bfd18ce16e6580f202f3889af227bdfbb")]
 [assembly: System.Reflection.AssemblyProductAttribute("Squawk")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Squawk")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

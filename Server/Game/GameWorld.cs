@@ -29,9 +29,9 @@ namespace Squawk.Game
         public float MapRadius;
         public Random Rng = new Random();
         public float BoostCost = 6f;
-        public float WorldFeatherRate = 5f;
+        public float WorldFeatherRate = 1f;
         float spawnAccum;
-        public int MaxFeathers = 1700;
+        public int MaxFeathers = 500;
         public int MaxPlayers = 20;
         public int BotWorkers = 4;
         public bool ParallelBots = false;
@@ -40,7 +40,8 @@ namespace Squawk.Game
         {
             MapRadius = 2500f;
             Parrots.Clear();
-            /* Temporarily disabled bots
+            // Temporarily disabled bots
+            /*
             for (int i = 0; i < botCount; i++)
             {
                 var b = new BotParrot
@@ -55,7 +56,7 @@ namespace Squawk.Game
             }
             */
             Feathers.Clear();
-            for (int i = 0; i < 600; i++)
+            for (int i = 0; i < 500; i++)
             {
                 Feathers.Add(new FeatherEnergy { 
                     Type = FeatherType.WorldFeather, 

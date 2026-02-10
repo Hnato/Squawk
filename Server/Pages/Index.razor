@@ -149,18 +149,31 @@
         // We only send parrots for Rendering.
         
         var parrots = World.Parrots.Where(p => p.IsAlive).Where(p => 
-            p.Position.X > left && p.Position.X < right && p.Position.Y > top && p.Position.Y < bottom
-        ).Select(p => new
-        {
-            i = p.Name,
-            x = (int)p.Position.X,
-            y = (int)p.Position.Y,
-            dx = (float)Math.Round(p.Direction.X, 3),
-            dy = (float)Math.Round(p.Direction.Y, 3),
-            e = (float)Math.Round(p.Energy, 1),
-            h = (int)p.Hue,
-            nm = p.DisplayName
-        }).ToArray();
+                p.Position.X > left && p.Position.X < right && p.Position.Y > top && p.Position.Y < bottom
+            ).Select(p => new {
+                id = p.Name,
+                x = p.Position.X,
+                y = p.Position.Y,
+                r = p.Size,
+                h = p.Hue,
+                n = p.DisplayName,
+                s = p.Segments.Select(s => new { x = s.Position.X, y = s.Position.Y, r = s.Radius }).ToArray()
+            }).ToList();
+
+            // Always force include myself to ensure I am visible even if Culling fails
+            if (MyPlayer != null && MyPlayer.IsAlive && !parrots.Any(p => p.id == MyPlayer.Name))
+            {
+                var mp = MyPlayer;
+                parrots.Add(new {
+                    id = mp.Name,
+                    x = mp.Position.X,
+                    y = mp.Position.Y,
+                    r = mp.Size,
+                    h = mp.Hue,
+                    n = mp.DisplayName,
+                    s = mp.Segments.Select(s => new { x = s.Position.X, y = s.Position.Y, r = s.Radius }).ToArray()
+                });
+            }
         
         // Always include Myself even if somehow out of bounds (shouldn't happen if camera follows me)
         // But CameraFor(MyPlayer) centers on me, so I am always in center.

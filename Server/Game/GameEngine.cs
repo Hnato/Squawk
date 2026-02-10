@@ -59,7 +59,7 @@ namespace Squawk.Game
                 }
 
                 // Log metrics every ~100 frames
-                if (stopwatch.ElapsedMilliseconds > 3000) // Just a periodic check example, but stopwatch resets
+                if (stopwatch.ElapsedMilliseconds > 40) // Just a periodic check example, but stopwatch resets
                 { 
                    // Not good place
                 }
