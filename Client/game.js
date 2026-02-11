@@ -12,10 +12,30 @@ const config = {
 };
 
 const COLORS = [
-    { head: 0x00ffa3, body: 0x008f5d }, // Emerald
-    { head: 0x00d1ff, body: 0x00768f }, // Ocean
-    { head: 0xfff500, body: 0x8f8a00 }, // Canary
-    { head: 0xff005c, body: 0x8f0034 }, // Ruby
+    { 
+        name: 'Green',
+        base: 0x5CCB00, 
+        accent: 0xA8E600, 
+        beak: 0xFFD400, 
+        wing: 0xFFEA00,
+        outline: 0x2D6600
+    },
+    { 
+        name: 'Blue',
+        base: 0x2CB7FF, 
+        accent: 0x7DD8FF, 
+        beak: 0xFF9E00, 
+        wing: 0x005EFF,
+        outline: 0x165C80
+    },
+    { 
+        name: 'Purple',
+        base: 0x8A2BE2, 
+        accent: 0xB266FF, 
+        beak: 0xFFB347, 
+        wing: 0x4B0082,
+        outline: 0x451571
+    }
 ];
 
 let game = new Phaser.Game(config);
@@ -50,21 +70,26 @@ function create() {
     border.strokeCircle(mapRadius, mapRadius, mapRadius);
 
     // Mini-map setup
-    const miniMapSize = 400; // Increased 2x from 200
-    const miniMapMargin = 30;
-    this.miniMapContainer = this.add.container(miniMapMargin, window.innerHeight - miniMapSize - miniMapMargin); // Moved to left bottom
+    const miniMapSize = 350; 
+    const miniMapMargin = 20;
+    this.miniMapContainer = this.add.container(miniMapMargin, this.scale.height - miniMapSize - miniMapMargin);
     this.miniMapContainer.setScrollFactor(0);
-    this.miniMapContainer.setDepth(100);
+    this.miniMapContainer.setDepth(1000); // Ensure it's on top of everything
 
     const miniMapBg = this.add.graphics();
-    miniMapBg.fillStyle(0x000000, 0.6);
+    miniMapBg.fillStyle(0x000000, 0.7);
     miniMapBg.fillCircle(miniMapSize/2, miniMapSize/2, miniMapSize/2);
-    miniMapBg.lineStyle(2, 0x00ffa3, 0.3);
+    miniMapBg.lineStyle(3, 0x00ffa3, 0.5);
     miniMapBg.strokeCircle(miniMapSize/2, miniMapSize/2, miniMapSize/2);
     this.miniMapContainer.add(miniMapBg);
 
     this.miniMapDots = this.add.graphics();
     this.miniMapContainer.add(this.miniMapDots);
+
+    // V13: Debug Label
+    this.miniMapDebug = this.add.text(miniMapSize/2, miniMapSize + 5, 'MiniMap: INIT', { fontSize: '10px', fill: '#00ffa3' }).setOrigin(0.5);
+    this.miniMapContainer.add(this.miniMapDebug);
+    console.log('MiniMap system initialized at:', miniMapMargin, this.scale.height - miniMapSize - miniMapMargin);
 
     document.getElementById('startBtn').addEventListener('click', () => {
         const name = document.getElementById('playerName').value || 'Papuga';
@@ -136,179 +161,219 @@ function handleGameUpdate(data) {
     // Remove disconnected
     Object.keys(players).forEach(id => {
         if (!currentIds.includes(id)) {
-            players[id].segments.forEach(seg => {
-                if (seg.eyes) seg.eyes.forEach(e => e.destroy());
+            const p = players[id];
+            
+            // V11: Death Feather Particles
+            p.segments.forEach((seg, i) => {
+                const emitter = scene.add.particles(0, 0, 'parrot_head', {
+                    x: seg.x,
+                    y: seg.y,
+                    speed: { min: 20, max: 100 },
+                    scale: { start: 0.15, end: 0 },
+                    alpha: { start: 0.8, end: 0 },
+                    lifespan: 600,
+                    tint: p.color.base,
+                    maxParticles: 3
+                });
+                
+                // Cleanup emitter after burst
+                scene.time.delayedCall(600, () => emitter.destroy());
                 seg.destroy();
             });
-            players[id].nameText.destroy();
+            
+            p.nameText.destroy();
             delete players[id];
         }
     });
 
     data.Parrots.forEach(pData => {
+        // Create or update player
         if (!players[pData.Id]) {
-            // Assign color based on name or ID hash
             let colorIndex = pData.Name.length % COLORS.length;
-            if (pData.Id === playerId) colorIndex = 0; // Local player always specific color if you want
+            if (pData.Id === playerId) colorIndex = 0; 
             
-                players[pData.Id] = {
-                    segments: [],
-                    nameText: scene.add.text(0, 0, pData.Name, { 
-                        fontSize: '14px', 
-                        fill: '#ffffff',
-                        fontStyle: '600',
-                        stroke: '#000000',
-                        strokeThickness: 2,
-                        padding: { x: 4, y: 2 }
-                    }).setOrigin(0.5),
-                    color: COLORS[colorIndex]
-                };
-                // Subtly fade in name
-                players[pData.Id].nameText.setAlpha(0);
-                scene.tweens.add({
-                    targets: players[pData.Id].nameText,
-                    alpha: 0.8,
-                    duration: 500
-                });
+            players[pData.Id] = {
+                segments: [],
+                nameText: scene.add.text(0, 0, pData.Name, { 
+                    fontSize: '14px', 
+                    fill: '#ffffff',
+                    fontStyle: '600',
+                    stroke: '#000000',
+                    strokeThickness: 2,
+                    padding: { x: 4, y: 2 }
+                }).setOrigin(0.5),
+                color: COLORS[colorIndex],
+                lastEnergy: pData.Energy,
+                lastSize: pData.Size || 1,
+                currentVisualSize: pData.Size || 1,
+                wingRotation: 0
+            };
+            players[pData.Id].nameText.setAlpha(0);
+            scene.tweens.add({
+                targets: players[pData.Id].nameText,
+                alpha: 0.8,
+                duration: 500
+            });
         }
 
         const p = players[pData.Id];
-        const size = 1 + (pData.Energy / 100);
         
-        // Detect growth (energy increase)
-        if (p.lastEnergy !== undefined && pData.Energy > p.lastEnergy) {
-            // Growth Effect: Flash color or particles
-            const head = p.segments[0];
-            if (head) {
-                // Scaling effect (gulp animation)
-                scene.tweens.add({
-                    targets: head,
-                    scale: size * 1.3,
-                    duration: 100,
-                    yoyo: true,
-                    ease: 'Quad.easeOut'
-                });
-                
-                // Particle effect for consumption
-                const emitter = scene.add.particles(0, 0, 'parrot_head', {
-                    x: head.x,
-                    y: head.y,
-                    speed: { min: 50, max: 150 },
-                    scale: { start: 0.1, end: 0 },
-                    alpha: { start: 0.6, end: 0 },
-                    lifespan: 400,
-                    blendMode: 'ADD',
-                    tint: p.color.head,
-                    maxParticles: 5
-                });
-            }
+        // V12: Smooth Size Transition (Size Jump at 40 energy handled by server pData.Size)
+        if (p.currentVisualSize !== pData.Size) {
+            scene.tweens.add({
+                targets: p,
+                currentVisualSize: pData.Size,
+                duration: 800,
+                ease: 'Cubic.out'
+            });
         }
-        p.lastEnergy = pData.Energy;
+        
+        const size = p.currentVisualSize;
+        const headHeight = 24 * size;
+        
+        // V12: Optimization - LOD (Level of Detail)
+        // If too many players or far away, simplify rendering
+        const distToPlayer = Phaser.Math.Distance.Between(cam.worldView.centerX, cam.worldView.centerY, pData.X, pData.Y);
+        const isFar = distToPlayer > 1500;
+        const maxSegmentsLOD = isFar ? Math.min(pData.Segments.length, 5) : pData.Segments.length;
 
-        // Update segments
-        while (p.segments.length < pData.Segments.length) {
+        while (p.segments.length < maxSegmentsLOD) {
             const isHead = p.segments.length === 0;
-            const radius = isHead ? 22 : 16;
+            const segmentIndex = p.segments.length;
+            const isTail = segmentIndex >= pData.Segments.length - 3 && pData.Segments.length > 5;
             
-            let segColor = isHead ? p.color.head : p.color.body;
-            if (!isHead && p.segments.length % 5 === 0) {
-                segColor = p.color.head;
-            }
-
-            const seg = scene.add.circle(0, 0, radius, segColor);
-            
+            let seg;
             if (isHead) {
-                // Add Parrot Beak (dziób)
-                const beak = scene.add.triangle(0, 0, 0, -10, -8, 15, 8, 15, 0xff9100);
-                beak.setDepth(11);
+                seg = scene.add.container(0, 0);
                 
-                // Add simple eyes to the head
-                const leftEye = scene.add.circle(-8, -5, 5, 0xffffff);
-                const rightEye = scene.add.circle(8, -5, 5, 0xffffff);
-                const leftPupil = scene.add.circle(-8, -5, 2.5, 0x000000);
-                const rightPupil = scene.add.circle(8, -5, 2.5, 0x000000);
+                // Uproszczona grafika dla wydajności
+                const headBase = scene.add.ellipse(0, 0, headHeight, headHeight * 1.1, p.color.base);
+                headBase.setStrokeStyle(headHeight * 0.1, p.color.outline);
                 
-                // Add animated wings to head/body
-                const leftWing = scene.add.ellipse(-15, 0, 25, 12, p.color.head);
-                const rightWing = scene.add.ellipse(15, 0, 25, 12, p.color.head);
-                leftWing.setDepth(4);
-                rightWing.setDepth(4);
+                const eyeWhite = scene.add.circle(headHeight * 0.2, -headHeight * 0.1, headHeight * 0.35 / 2, 0xffffff);
+                const pupil = scene.add.circle(headHeight * 0.25, -headHeight * 0.1, headHeight * 0.2 / 2, 0x000000);
                 
-                // Wing flap animation
-                scene.tweens.add({
-                    targets: [leftWing, rightWing],
-                    scaleY: 0.2,
-                    duration: 300,
-                    yoyo: true,
-                    repeat: -1,
-                    ease: 'Sine.easeInOut'
-                });
+                const beakUpper = scene.add.ellipse(headHeight * 0.5, headHeight * 0.1, headHeight * 0.6, headHeight * 0.4, p.color.beak);
+                beakUpper.setStrokeStyle(2, p.color.outline);
+
+                seg.add([headBase, beakUpper, eyeWhite, pupil]);
+                seg.headFeatures = { headBase, beakUpper, eyeWhite, pupil };
+            } else {
+                seg = scene.add.container(0, 0);
+                const segWidth = headHeight * 0.8;
+                const segHeight = headHeight * 0.6;
                 
-                seg.parrotFeatures = [beak, leftEye, rightEye, leftPupil, rightPupil, leftWing, rightWing];
+                const bodyPart = scene.add.rectangle(0, 0, segWidth, segHeight, p.color.base, 1);
+                bodyPart.setStrokeStyle(segHeight * 0.1, p.color.outline);
+                
+                seg.add([bodyPart]);
+
+                if (isTail && !isFar) {
+                    const wing = scene.add.ellipse(0, 0, headHeight * 1.2, headHeight * 0.4, p.color.wing);
+                    wing.setStrokeStyle(2, p.color.outline);
+                    wing.setOrigin(0, 0.5);
+                    seg.add(wing);
+                    seg.wing = wing;
+                    seg.sendToBack(wing);
+                }
             }
             
             p.segments.push(seg);
         }
-        while (p.segments.length > pData.Segments.length) {
+
+        while (p.segments.length > maxSegmentsLOD) {
             const seg = p.segments.pop();
-            if (seg.parrotFeatures) seg.parrotFeatures.forEach(e => e.destroy());
             seg.destroy();
         }
 
-        pData.Segments.forEach((pos, i) => {
-            const seg = p.segments[i];
-            seg.x = pos.X;
-            seg.y = pos.Y;
-            seg.setScale(size);
+        // V12: Optimization - Culling (Don't update if far off screen)
+        const isVisible = cam.worldView.contains(pData.X, pData.Y) || distToPlayer < 1000;
+        
+        if (isVisible) {
+            p.nameText.setVisible(true);
+            p.segments.forEach(s => s.setVisible(true));
             
-            if (seg.parrotFeatures) {
-                const angle = i < pData.Segments.length - 1 ? 
-                    Math.atan2(pData.Segments[i].Y - pData.Segments[i+1].Y, pData.Segments[i].X - pData.Segments[i+1].X) : 0;
-                
-                // Update beak
-                const beak = seg.parrotFeatures[0];
-                const beakDist = 15 * size;
-                beak.x = seg.x + Math.cos(angle) * beakDist;
-                beak.y = seg.y + Math.sin(angle) * beakDist;
-                beak.rotation = angle + Math.PI/2;
-                beak.setScale(size);
+            p.wingRotation = Math.sin(Date.now() / 200) * 0.2;
 
-                // Update eyes
-                seg.parrotFeatures.slice(1, 5).forEach((eye, eyeIdx) => {
-                    const offsetX = eyeIdx < 2 ? (eyeIdx === 0 ? -8 : 8) : (eyeIdx === 2 ? -8 : 8);
-                    const offsetY = -5;
-                    const rotatedX = offsetX * Math.cos(angle) - offsetY * Math.sin(angle);
-                    const rotatedY = offsetX * Math.sin(angle) + offsetY * Math.cos(angle);
-                    eye.x = seg.x + rotatedX * size;
-                    eye.y = seg.y + rotatedY * size;
-                    eye.setScale(size);
-                    eye.setDepth(12);
-                });
+            pData.Segments.forEach((pos, i) => {
+                if (i >= p.segments.length) return;
+                const seg = p.segments[i];
+                seg.x = pos.X;
+                seg.y = pos.Y;
                 
-                // Update wings
-                const lWing = seg.parrotFeatures[5];
-                const rWing = seg.parrotFeatures[6];
-                const wingAngle = angle + Math.PI/2;
-                lWing.x = seg.x + Math.cos(angle - Math.PI/2) * (15 * size);
-                lWing.y = seg.y + Math.sin(angle - Math.PI/2) * (15 * size);
-                lWing.rotation = wingAngle;
-                lWing.setScale(size, lWing.scaleY); // Maintain flap scaleY
+                const angle = i < pData.Segments.length - 1 ? 
+                    Math.atan2(pData.Segments[i].Y - pData.Segments[i+1].Y, pData.Segments[i].X - pData.Segments[i+1].X) : 
+                    (i > 0 ? Math.atan2(pData.Segments[i-1].Y - pData.Segments[i].Y, pData.Segments[i-1].X - pData.Segments[i].X) : 0);
                 
-                rWing.x = seg.x + Math.cos(angle + Math.PI/2) * (15 * size);
-                rWing.y = seg.y + Math.sin(angle + Math.PI/2) * (15 * size);
-                rWing.rotation = wingAngle;
-                rWing.setScale(size, rWing.scaleY);
-            }
-            seg.setDepth(5 - i * 0.01);
-        });
+                seg.rotation = angle;
+                
+                // V11: Boost stretching (10-15%)
+                const boostScale = pData.IsBoosting ? 1.15 : 1.0;
+                seg.setScale((size / (1 + (pData.Energy/100))) * boostScale);
+
+                if (seg.headFeatures) {
+                    if (pData.IsBoosting) {
+                        seg.headFeatures.headBase.setStrokeStyle(headHeight * 0.15, 0xffffff, 0.8);
+                        
+                        // V11: Trail particle in BaseColor during boost
+                        if (i === 0 && Math.random() < 0.3) {
+                            const trail = scene.add.particles(0, 0, 'parrot_head', {
+                                x: seg.x,
+                                y: seg.y,
+                                speed: 20,
+                                scale: { start: 0.1 * size, end: 0 },
+                                alpha: { start: 0.4, end: 0 },
+                                lifespan: 300,
+                                tint: p.color.base,
+                                maxParticles: 1
+                            });
+                            scene.time.delayedCall(300, () => trail.destroy());
+                        }
+                    } else {
+                        seg.headFeatures.headBase.setStrokeStyle(headHeight * 0.1, p.color.outline);
+                    }
+                }
+
+                if (seg.wing) {
+                    seg.wing.rotation = p.wingRotation * (i % 2 === 0 ? 1 : -1);
+                }
+
+                seg.setDepth(100 - i);
+            });
+        } else {
+            p.nameText.setVisible(false);
+            p.segments.forEach(s => s.setVisible(false));
+        }
+
+        // Growth effect / Swallow
+        if (pData.Energy > p.lastEnergy) {
+            const head = p.segments[0];
+            scene.tweens.add({
+                targets: head,
+                scale: 1.2,
+                duration: 100,
+                yoyo: true
+            });
+            // Particles
+            const emitter = scene.add.particles(0, 0, 'parrot_head', {
+                x: pData.X,
+                y: pData.Y,
+                speed: { min: 50, max: 150 },
+                scale: { start: 0.1, end: 0 },
+                lifespan: 400,
+                tint: p.color.base,
+                maxParticles: 5
+            });
+        }
+        p.lastEnergy = pData.Energy;
 
         p.nameText.x = pData.X;
-        p.nameText.y = pData.Y - 50 * size;
-        p.nameText.setDepth(20);
+        p.nameText.y = pData.Y - 60 * size;
+        p.nameText.setDepth(200);
 
         if (pData.Id === playerId) {
             cam.startFollow(p.segments[0], true, 0.1, 0.1);
-            const zoom = Math.max(0.3, 1 / size);
+            const zoom = Math.max(0.3, 0.8 / size);
             cam.setZoom(Phaser.Math.Linear(cam.zoom, zoom, 0.1));
         }
     });
@@ -316,15 +381,60 @@ function handleGameUpdate(data) {
     // Update mini-map
     if (scene.miniMapDots) {
         scene.miniMapDots.clear();
-        const miniMapSize = 400;
+        const miniMapSize = 350;
         const scale = miniMapSize / (mapRadius * 2);
 
+        // V13: Diagnostic log (once per 100 frames)
+        if (Date.now() % 100 < 20) {
+            if (scene.miniMapDebug) {
+                scene.miniMapDebug.setText(`Map: ${data.Parrots.length}P, ${data.Feathers.length}F`);
+                if (!scene.miniMapContainer.visible) console.warn('MiniMap container is hidden!');
+                if (scene.miniMapContainer.alpha < 0.1) console.warn('MiniMap container is transparent!');
+            }
+        }
+
+        // Draw Feathers (Food) - Optimized: only draw larger/special ones or subset
+        data.Feathers.forEach((fData, index) => {
+            // Optimization: Draw every 2nd feather if count is high (> 200)
+            if (data.Feathers.length > 200 && index % 2 !== 0) return;
+            
+            let color = 0xaaaaaa;
+            if (fData.Type === 0) color = 0x00ffa3;
+            else if (fData.Type === 1) color = 0xffffff;
+            else if (fData.Type === 2) color = 0xff4d6d;
+
+            const dotX = fData.X * scale;
+            const dotY = fData.Y * scale;
+            
+            // Only draw if within minimap circle bounds (approx)
+            const distSq = Math.pow(dotX - miniMapSize/2, 2) + Math.pow(dotY - miniMapSize/2, 2);
+            if (distSq <= Math.pow(miniMapSize/2, 2)) {
+                scene.miniMapDots.fillStyle(color, 0.4);
+                scene.miniMapDots.fillCircle(dotX, dotY, 1.5);
+            }
+        });
+
+        // Draw Parrots (Players/Bots)
         data.Parrots.forEach(pData => {
             const isLocal = pData.Id === playerId;
-            scene.miniMapDots.fillStyle(isLocal ? 0xffffff : 0xff0000, isLocal ? 1 : 0.6);
             const dotX = pData.X * scale;
             const dotY = pData.Y * scale;
-            scene.miniMapDots.fillCircle(dotX, dotY, isLocal ? 4 : 3);
+            
+            const distSq = Math.pow(dotX - miniMapSize/2, 2) + Math.pow(dotY - miniMapSize/2, 2);
+            if (distSq <= Math.pow(miniMapSize/2, 2)) {
+                scene.miniMapDots.fillStyle(isLocal ? 0xffffff : 0xff0000, isLocal ? 1 : 0.8);
+                scene.miniMapDots.fillCircle(dotX, dotY, isLocal ? 5 : 4);
+                
+                // V13: Direction indicator for players
+                if (isLocal || pData.Energy > 100) {
+                    scene.miniMapDots.lineStyle(1, 0xffffff, 0.5);
+                    scene.miniMapDots.lineBetween(
+                        dotX, dotY, 
+                        dotX + Math.cos(pData.Direction) * 8, 
+                        dotY + Math.sin(pData.Direction) * 8
+                    );
+                }
+            }
         });
     }
 
@@ -395,8 +505,8 @@ window.addEventListener('resize', () => {
     game.scale.resize(window.innerWidth, window.innerHeight);
     const scene = game.scene.scenes[0];
     if (scene && scene.miniMapContainer) {
-        const miniMapSize = 400;
-        const miniMapMargin = 30;
-        scene.miniMapContainer.setPosition(miniMapMargin, window.innerHeight - miniMapSize - miniMapMargin);
+        const miniMapSize = 350;
+        const miniMapMargin = 20;
+        scene.miniMapContainer.setPosition(miniMapMargin, scene.scale.height - miniMapSize - miniMapMargin);
     }
 });

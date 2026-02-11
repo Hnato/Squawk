@@ -7,9 +7,9 @@ namespace Squawk.Server
 {
     public class GameEngine
     {
-        public const float MapRadius = 7200f; // 5x larger than before
-        public const int MaxFeathers = 1000; // Half of 25000
-        public const int BotCount = 32; // More bots for larger map
+        public const float MapRadius = 7200f; 
+        public const int MaxFeathers = 4000; 
+        public const int BotCount = 34; 
 
         private Dictionary<string, Parrot> _parrots = new Dictionary<string, Parrot>();
         private List<FeatherEnergy> _feathers = new List<FeatherEnergy>();
@@ -133,38 +133,7 @@ namespace Squawk.Server
                 foreach (var parrot in _parrots.Values.ToList())
                 {
                     if (!parrot.IsAlive) continue;
-
-                    // Boost logic
-                    if (parrot.IsBoosting && parrot.Energy > Parrot.MinEnergyForBoost)
-                    {
-                        parrot.Energy -= Parrot.BoostCost * deltaTime;
-                        // Spawn boost feathers occasionally
-                        if (_random.NextDouble() < 0.1)
-                        {
-                            SpawnFeather(FeatherType.BOOST_FEATHER, parrot.Segments.Last(), 0.5f);
-                        }
-                    }
-
-                    // Move head
-                    Vector2 move = Vector2.FromAngle(parrot.Direction) * parrot.CurrentSpeed * deltaTime;
-                    parrot.Position += move;
-
-                    // Update segments (follow leader)
-                    UpdateSegments(parrot);
-
-                    // Circular Map boundaries
-                    float distFromCenter = Vector2.Distance(parrot.Position, new Vector2(MapRadius, MapRadius));
-                    if (distFromCenter > MapRadius)
-                    {
-                        KillParrot(parrot);
-                        continue;
-                    }
-
-                    // Collisions with feathers
-                    CheckFeatherCollisions(parrot);
-
-                    // Collisions with other parrots
-                    CheckParrotCollisions(parrot);
+                    UpdateParrot(parrot, deltaTime);
                 }
 
                 // Keep feathers populated
@@ -177,56 +146,89 @@ namespace Squawk.Server
 
         private void UpdateSegments(Parrot parrot)
         {
-            // First segment is the head position
-            parrot.Segments[0] = parrot.Position;
+            if (parrot.Segments.Count == 0) return;
 
             // Target number of segments based on energy
-            int targetSegmentCount = (int)(parrot.Energy / 5f) + 3;
-            while (parrot.Segments.Count < targetSegmentCount)
+            int targetSegments = parrot.MaxSegments;
+
+            // Add segments if needed
+            if (parrot.Segments.Count < targetSegments)
             {
                 parrot.Segments.Add(parrot.Segments.Last());
             }
 
-            // Move segments to maintain distance
-            for (int i = 1; i < parrot.Segments.Count; i++)
+            // Move segments
+            for (int i = parrot.Segments.Count - 1; i > 0; i--)
             {
                 Vector2 prev = parrot.Segments[i - 1];
                 Vector2 curr = parrot.Segments[i];
-                float dist = Vector2.Distance(prev, curr);
-                // Reduce segment distance for overlapping look
-                float minDist = (Parrot.SegmentDistance * 0.4f) * parrot.Size;
+                
+                float dist = Vector2.Distance(curr, prev);
+                float minDist = Parrot.SegmentDistance * 0.4f; // Overlapping segments
 
                 if (dist > minDist)
                 {
-                    Vector2 dir = (prev - curr).Normalized();
-                    parrot.Segments[i] = prev - dir * minDist;
+                    Vector2 diff = prev - curr;
+                    parrot.Segments[i] = prev - diff.Normalized() * minDist;
                 }
             }
+            
+            // Head position is already updated in Update loop
+            parrot.Segments[0] = parrot.Position;
         }
 
-        private void CheckFeatherCollisions(Parrot parrot)
+        private void UpdateParrot(Parrot parrot, float deltaTime)
         {
-            float pickupRadius = 40f * parrot.Size;
-            var caught = _feathers.Where(f => Vector2.Distance(parrot.Position, f.Position) < pickupRadius).ToList();
-            foreach (var f in caught)
+            if (!parrot.IsAlive) return;
+
+            // V12: Level System & Difficulty Scaling
+            float levelProgress = Math.Min(1.0f, parrot.Energy / 1000f);
+            // Higher energy = slightly more speed but much harder turning
+            float speedMultiplier = 1.0f + (levelProgress * 0.5f);
+            float currentSpeed = parrot.CurrentSpeed * speedMultiplier;
+
+            // Handle Input/Movement (Direction updated in UpdateInput)
+            // Update Position
+            parrot.Position += Vector2.FromAngle(parrot.Direction) * currentSpeed * deltaTime;
+
+            // Energy decay based on size/level
+            float decayRate = 1.0f + (levelProgress * 5.0f);
+            if (parrot.IsBoosting) decayRate *= 3.0f;
+            parrot.Energy = Math.Max(10, parrot.Energy - decayRate * deltaTime);
+
+            UpdateSegments(parrot);
+            CheckCollisions(parrot);
+        }
+
+        private void CheckCollisions(Parrot parrot)
+        {
+            // Boundary check
+            float distFromCenter = Vector2.Distance(parrot.Position, new Vector2(MapRadius, MapRadius));
+            if (distFromCenter > MapRadius)
             {
-                parrot.Energy += f.Value;
-                _feathers.Remove(f);
+                KillParrot(parrot);
+                return;
             }
-        }
 
-        private void CheckParrotCollisions(Parrot parrot)
-        {
+            // Feather collection
+            var collected = _feathers.Where(f => Vector2.Distance(parrot.Position, f.Position) < 30 * parrot.Size).ToList();
+            foreach (var f in collected)
+            {
+                _feathers.Remove(f);
+                // V12: Scaling Rewards - Higher level parrots get slightly more energy per feather
+                float rewardBonus = 1.0f + (parrot.Energy / 1000f);
+                parrot.Energy += (f.Value * 2.0f) * rewardBonus;
+            }
+
+            // Player-Player collisions (Head to body)
             foreach (var other in _parrots.Values)
             {
-                if (other.Id == parrot.Id) continue;
-                if (!other.IsAlive) continue;
+                if (other.Id == parrot.Id || !other.IsAlive) continue;
 
-                // Check head of 'parrot' against all segments of 'other'
-                // Skip the first few segments to avoid immediate head-on weirdness if needed
                 for (int i = 0; i < other.Segments.Count; i++)
                 {
-                    float collisionDist = (18f * parrot.Size) + (18f * other.Size);
+                    // Head of 'parrot' hits 'other' body segment
+                    float collisionDist = 20 * (parrot.Size + other.Size) * 0.5f;
                     if (Vector2.Distance(parrot.Position, other.Segments[i]) < collisionDist)
                     {
                         KillParrot(parrot);
@@ -274,28 +276,44 @@ namespace Squawk.Server
                 foreach (var seg in other.Segments)
                 {
                     float dist = Vector2.Distance(bot.Position, seg);
-                    if (dist < 150)
+                    if (dist < 180) // Increased danger zone
                     {
                         Vector2 away = bot.Position - seg;
-                        Vector2 evadePos = bot.Position + away.Normalized() * 200;
-                        UpdateInput(bot.Id, evadePos.X, evadePos.Y, bot.Energy > 50);
-                        return; // Done for this tick
+                        Vector2 evadePos = bot.Position + away.Normalized() * 250;
+                        UpdateInput(bot.Id, evadePos.X, evadePos.Y, bot.Energy > 30); // More likely to boost when in danger
+                        return; 
                     }
                 }
             }
 
-            // 2. MAP BOUNDARY AVOIDANCE
+            // 2. AGGRESSIVE ATTACK (New priority)
+            // Look for nearby players/bots to attack
+            var target = _parrots.Values
+                .Where(p => p.Id != bot.Id && p.IsAlive)
+                .OrderBy(p => Vector2.Distance(bot.Position, p.Position))
+                .FirstOrDefault();
+
+            if (target != null && Vector2.Distance(bot.Position, target.Position) < 1000)
+            {
+                // Try to intercept
+                Vector2 interceptPos = target.Position + Vector2.FromAngle(target.Direction) * 150;
+                bool shouldBoost = Vector2.Distance(bot.Position, target.Position) < 400 && bot.Energy > 20;
+                UpdateInput(bot.Id, interceptPos.X, interceptPos.Y, shouldBoost);
+                return;
+            }
+
+            // 3. MAP BOUNDARY AVOIDANCE
             float distFromCenter = Vector2.Distance(bot.Position, new Vector2(MapRadius, MapRadius));
-            if (distFromCenter > MapRadius * 0.8f)
+            if (distFromCenter > MapRadius * 0.85f)
             {
                 UpdateInput(bot.Id, MapRadius, MapRadius, false);
                 return;
             }
 
-            // 3. REGULAR BEHAVIOR
+            // 4. REGULAR BEHAVIOR
             if (bot.StateTimer <= 0)
             {
-                var nearbyFeathers = _feathers.Where(f => Vector2.Distance(bot.Position, f.Position) < 800).ToList();
+                var nearbyFeathers = _feathers.Where(f => Vector2.Distance(bot.Position, f.Position) < 1200).ToList();
                 
                 if (nearbyFeathers.Any())
                 {
@@ -305,15 +323,14 @@ namespace Squawk.Server
                 else
                 {
                     bot.State = BotState.WANDER;
-                    // Wander towards center-ish
                     float angle = (float)(_random.NextDouble() * Math.PI * 2);
-                    float dist = (float)(_random.NextDouble() * MapRadius * 0.5f);
+                    float dist = (float)(_random.NextDouble() * MapRadius * 0.6f);
                     bot.TargetPosition = new Vector2(
                         (float)(Math.Cos(angle) * dist) + MapRadius,
                         (float)(Math.Sin(angle) * dist) + MapRadius
                     );
                 }
-                bot.StateTimer = 0.5f + (float)_random.NextDouble() * 1.0f;
+                bot.StateTimer = 0.3f + (float)_random.NextDouble() * 0.5f; // Faster decision making
             }
 
             if (bot.TargetPosition.HasValue)

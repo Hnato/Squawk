@@ -43,8 +43,9 @@ namespace Squawk.Server.Models
         public const float SegmentDistance = 20f;
 
         public float CurrentSpeed => IsBoosting && Energy > MinEnergyForBoost ? BoostSpeed : BaseSpeed;
-        public float Size => 1f + (Energy / 100f);
-        public float TurnRate => Math.Max(1.0f, 5.0f / Size); // Higher size = lower turn rate
+        public float Size => Energy < 40f ? 1f + (Energy / 100f) : 1.5f + (Energy / 150f);
+        public float TurnRate => Math.Max(0.8f, 5.0f / Size); 
+        public int MaxSegments => 5 + (int)(Energy * 0.8f); // Faster length growth (was probably implicit before)
 
         public Parrot(string id, string name, Vector2 startPos)
         {
