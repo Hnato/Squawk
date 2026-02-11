@@ -4,94 +4,113 @@ using System.Text;
 using Fleck;
 using Newtonsoft.Json;
 using Squawk.Server.Models;
+using Squawk.Server.Tests;
 
 namespace Squawk.Server
 {
     class Program
     {
+        private const int Port = 5004;
+        private const string Host = "0.0.0.0";
         private static GameEngine _engine = new GameEngine();
         private static Dictionary<IWebSocketConnection, string> _clients = new Dictionary<IWebSocketConnection, string>();
-        private static string _clientPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Client");
 
         static void Main(string[] args)
         {
-            // Fallback for client path if running from root
-            if (!Directory.Exists(_clientPath))
-            {
-                _clientPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "Client");
-                if (!Directory.Exists(_clientPath))
-                {
-                    _clientPath = Path.Combine(Directory.GetCurrentDirectory(), "Client");
-                }
-            }
+            Console.Clear();
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine(@"
+   _____  ____  _    _         __          ___  __ 
+  / ____|/ __ \| |  | |  /\    \ \        / / |/ / 
+ | (___ | |  | | |  | | /  \    \ \  /\  / /| ' /  
+  \___ \| |  | | |  | |/ /\ \    \ \/  \/ / |  <   
+  ____) | |__| | |__| / ____ \    \  /\  /  | . \  
+ |_____/ \___\_\\____/_/    \_\    \/  \/   |_|\_\ 
+                                                   
+            [ MULTIPLAYER PARROT BATTLE ]
+            ");
+            Console.ResetColor();
+            Console.WriteLine("========================================");
+            Console.WriteLine("       SQUAWK SERVER INITIALIZING       ");
+            Console.WriteLine("========================================");
 
-            Console.WriteLine($"Client path: {_clientPath}");
-
-            // Start WebSocket Server
-            var server = new WebSocketServer("ws://0.0.0.0:5004");
-            server.Start(socket =>
+            var server = new WebSocketServer($"ws://{Host}:{Port}");
+            
+            try 
             {
-                socket.OnOpen = () =>
+                server.Start(socket =>
                 {
-                    string playerId = Guid.NewGuid().ToString();
-                    _clients[socket] = playerId;
-                    var welcome = new WelcomeMessage 
-                    { 
-                        PlayerId = playerId,
-                        MapRadius = GameEngine.MapRadius
+                    socket.OnOpen = () =>
+                    {
+                        string playerId = Guid.NewGuid().ToString();
+                        _clients[socket] = playerId;
+                        var welcome = new WelcomeMessage 
+                        { 
+                            PlayerId = playerId,
+                            MapRadius = GameEngine.MapRadius
+                        };
+                        socket.Send(JsonConvert.SerializeObject(welcome));
+                        Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Client connected: {playerId}");
                     };
-                    socket.Send(JsonConvert.SerializeObject(welcome));
-                    Console.WriteLine($"Client connected: {playerId}");
-                };
 
-                socket.OnClose = () =>
-                {
-                    if (_clients.TryGetValue(socket, out string playerId))
+                    socket.OnClose = () =>
                     {
-                        _engine.RemoveParrot(playerId);
-                        _clients.Remove(socket);
-                        Console.WriteLine($"Client disconnected: {playerId}");
-                    }
-                };
-
-                socket.OnMessage = message =>
-                {
-                    try
-                    {
-                        var baseMsg = JsonConvert.DeserializeObject<BaseMessage>(message);
-                        if (baseMsg != null && _clients.TryGetValue(socket, out string? playerId) && playerId != null)
+                        if (_clients.TryGetValue(socket, out string? playerId) && playerId != null)
                         {
-                            switch (baseMsg.Type)
+                            _engine.RemoveParrot(playerId);
+                            _clients.Remove(socket);
+                            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Client disconnected: {playerId}");
+                        }
+                    };
+
+                    socket.OnMessage = message =>
+                    {
+                        try
+                        {
+                            var baseMsg = JsonConvert.DeserializeObject<BaseMessage>(message);
+                            string? currentPlayerId;
+                            if (baseMsg != null && _clients.TryGetValue(socket, out currentPlayerId) && currentPlayerId != null)
                             {
-                                case MessageType.Join:
-                                    var joinMsg = JsonConvert.DeserializeObject<JoinMessage>(message);
-                                    if (joinMsg != null && joinMsg.Name != null)
-                                    {
-                                        _engine.AddParrot(playerId, joinMsg.Name);
-                                    }
-                                    break;
-                                case MessageType.Input:
-                                    var inputMsg = JsonConvert.DeserializeObject<InputMessage>(message);
-                                    if (inputMsg != null)
-                                    {
-                                        _engine.UpdateInput(playerId, inputMsg.TargetX, inputMsg.TargetY, inputMsg.IsBoosting);
-                                    }
-                                    break;
+                                switch (baseMsg.Type)
+                                {
+                                    case MessageType.Join:
+                                        var joinMsg = JsonConvert.DeserializeObject<JoinMessage>(message);
+                                        if (joinMsg != null && joinMsg.Name != null)
+                                        {
+                                            _engine.AddParrot(currentPlayerId, joinMsg.Name);
+                                        }
+                                        break;
+                                    case MessageType.Input:
+                                        var inputMsg = JsonConvert.DeserializeObject<InputMessage>(message);
+                                        if (inputMsg != null)
+                                        {
+                                            _engine.UpdateInput(currentPlayerId, inputMsg.TargetX, inputMsg.TargetY, inputMsg.IsBoosting);
+                                        }
+                                        break;
+                                }
                             }
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("Error processing message: " + ex.Message);
-                    }
-                };
-            });
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Error processing message: {ex.Message}");
+                        }
+                    };
+                });
 
-            Console.WriteLine("WebSocket Server started on ws://0.0.0.0:5004");
-            Console.WriteLine("HTTP Server is DISABLED. Use a separate web server for the Client/ folder.");
-            // Console.WriteLine("OPEN http://localhost:12345 TO PLAY!");
+                System.Threading.Thread.Sleep(500);
+                SocketValidator.ValidateOnlyTargetPort(Port);
 
-            // Game Loop
+                Console.WriteLine($"\n[{DateTime.Now:HH:mm:ss}] WebSocket Server ACTIVE on:");
+                Console.WriteLine($" -> ws://{Host}:{Port}");
+                Console.WriteLine($" -> ws://localhost:{Port}");
+                Console.WriteLine("========================================");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"CRITICAL ERROR: Could not start server: {ex.Message}");
+                return;
+            }
+
             DateTime lastTick = DateTime.Now;
             int frameCount = 0;
             while (true)
@@ -104,12 +123,11 @@ namespace Squawk.Server
                 _engine.Update(deltaTime);
                 _engine.CleanupDead();
 
-                // Broadcast state
                 var state = _engine.GetState();
                 var stateJson = JsonConvert.SerializeObject(state);
                 
                 string? leaderboardJson = null;
-                if (frameCount % 30 == 0) // Every ~1 second
+                if (frameCount % 30 == 0)
                 {
                     var leaderboard = _engine.GetLeaderboard();
                     leaderboardJson = JsonConvert.SerializeObject(leaderboard);
@@ -126,7 +144,6 @@ namespace Squawk.Server
                             client.Send(stateJson);
                             if (leaderboardJson != null) client.Send(leaderboardJson);
 
-                            // Check if this player just died
                             var parrot = _engine.GetParrot(playerId);
                             if (parrot != null && !parrot.IsAlive)
                             {
@@ -156,86 +173,8 @@ namespace Squawk.Server
                     }
                 }
 
-                Thread.Sleep(33); // ~30 FPS
+                Thread.Sleep(33);
             }
-        }
-
-        static void StartHttpServer(int port)
-        {
-            var listener = new HttpListener();
-            listener.Prefixes.Add($"http://*:{port}/");
-            try
-            {
-                listener.Start();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Could not start HTTP server on port {port}: {ex.Message}");
-                Console.WriteLine("Make sure to run as Administrator or use a different port.");
-                return;
-            }
-
-            Task.Run(() =>
-            {
-                while (listener.IsListening)
-                {
-                    try
-                    {
-                        var context = listener.GetContext();
-                        ProcessRequest(context);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"HTTP Request error: {ex.Message}");
-                    }
-                }
-            });
-        }
-
-        static void ProcessRequest(HttpListenerContext context)
-        {
-            if (context.Request.Url == null) return;
-            string filename = context.Request.Url.AbsolutePath.Substring(1);
-            if (string.IsNullOrEmpty(filename)) filename = "index.html";
-
-            string filePath = Path.Combine(_clientPath, filename);
-
-            if (File.Exists(filePath))
-            {
-                try
-                {
-                    byte[] content = File.ReadAllBytes(filePath);
-                    context.Response.ContentType = GetContentType(filePath);
-                    context.Response.ContentLength64 = content.Length;
-                    context.Response.OutputStream.Write(content, 0, content.Length);
-                }
-                catch (Exception ex)
-                {
-                    context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                    Console.WriteLine($"Error serving {filename}: {ex.Message}");
-                }
-            }
-            else
-            {
-                context.Response.StatusCode = (int)HttpStatusCode.NotFound;
-                byte[] errorMsg = Encoding.UTF8.GetBytes("404 - Not Found");
-                context.Response.OutputStream.Write(errorMsg, 0, errorMsg.Length);
-            }
-            context.Response.OutputStream.Close();
-        }
-
-        static string GetContentType(string path)
-        {
-            string ext = Path.GetExtension(path).ToLower();
-            return ext switch
-            {
-                ".html" => "text/html",
-                ".js" => "application/javascript",
-                ".css" => "text/css",
-                ".png" => "image/png",
-                ".ico" => "image/x-icon",
-                _ => "application/octet-stream"
-            };
         }
     }
 }
