@@ -50,16 +50,16 @@ function create() {
     border.strokeCircle(mapRadius, mapRadius, mapRadius);
 
     // Mini-map setup
-    const miniMapSize = 200;
-    const miniMapMargin = 20;
-    this.miniMapContainer = this.add.container(window.innerWidth - miniMapSize - miniMapMargin, window.innerHeight - miniMapSize - miniMapMargin);
+    const miniMapSize = 400; // Increased 2x from 200
+    const miniMapMargin = 30;
+    this.miniMapContainer = this.add.container(miniMapMargin, window.innerHeight - miniMapSize - miniMapMargin); // Moved to left bottom
     this.miniMapContainer.setScrollFactor(0);
     this.miniMapContainer.setDepth(100);
 
     const miniMapBg = this.add.graphics();
-    miniMapBg.fillStyle(0x000000, 0.5);
+    miniMapBg.fillStyle(0x000000, 0.6);
     miniMapBg.fillCircle(miniMapSize/2, miniMapSize/2, miniMapSize/2);
-    miniMapBg.lineStyle(1, 0xffffff, 0.2);
+    miniMapBg.lineStyle(2, 0x00ffa3, 0.3);
     miniMapBg.strokeCircle(miniMapSize/2, miniMapSize/2, miniMapSize/2);
     this.miniMapContainer.add(miniMapBg);
 
@@ -174,16 +174,44 @@ function handleGameUpdate(data) {
 
         const p = players[pData.Id];
         const size = 1 + (pData.Energy / 100);
+        
+        // Detect growth (energy increase)
+        if (p.lastEnergy !== undefined && pData.Energy > p.lastEnergy) {
+            // Growth Effect: Flash color or particles
+            const head = p.segments[0];
+            if (head) {
+                // Scaling effect (gulp animation)
+                scene.tweens.add({
+                    targets: head,
+                    scale: size * 1.3,
+                    duration: 100,
+                    yoyo: true,
+                    ease: 'Quad.easeOut'
+                });
+                
+                // Particle effect for consumption
+                const emitter = scene.add.particles(0, 0, 'parrot_head', {
+                    x: head.x,
+                    y: head.y,
+                    speed: { min: 50, max: 150 },
+                    scale: { start: 0.1, end: 0 },
+                    alpha: { start: 0.6, end: 0 },
+                    lifespan: 400,
+                    blendMode: 'ADD',
+                    tint: p.color.head,
+                    maxParticles: 5
+                });
+            }
+        }
+        p.lastEnergy = pData.Energy;
 
         // Update segments
         while (p.segments.length < pData.Segments.length) {
             const isHead = p.segments.length === 0;
             const radius = isHead ? 22 : 16;
             
-            // Parrot color logic: head is one color, body segments can alternate or have "wings" look
             let segColor = isHead ? p.color.head : p.color.body;
             if (!isHead && p.segments.length % 5 === 0) {
-                // Occasional colorful "feather" segment
                 segColor = p.color.head;
             }
 
@@ -200,7 +228,23 @@ function handleGameUpdate(data) {
                 const leftPupil = scene.add.circle(-8, -5, 2.5, 0x000000);
                 const rightPupil = scene.add.circle(8, -5, 2.5, 0x000000);
                 
-                seg.parrotFeatures = [beak, leftEye, rightEye, leftPupil, rightPupil];
+                // Add animated wings to head/body
+                const leftWing = scene.add.ellipse(-15, 0, 25, 12, p.color.head);
+                const rightWing = scene.add.ellipse(15, 0, 25, 12, p.color.head);
+                leftWing.setDepth(4);
+                rightWing.setDepth(4);
+                
+                // Wing flap animation
+                scene.tweens.add({
+                    targets: [leftWing, rightWing],
+                    scaleY: 0.2,
+                    duration: 300,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+                
+                seg.parrotFeatures = [beak, leftEye, rightEye, leftPupil, rightPupil, leftWing, rightWing];
             }
             
             p.segments.push(seg);
@@ -230,18 +274,30 @@ function handleGameUpdate(data) {
                 beak.setScale(size);
 
                 // Update eyes
-                seg.parrotFeatures.slice(1).forEach((eye, eyeIdx) => {
+                seg.parrotFeatures.slice(1, 5).forEach((eye, eyeIdx) => {
                     const offsetX = eyeIdx < 2 ? (eyeIdx === 0 ? -8 : 8) : (eyeIdx === 2 ? -8 : 8);
                     const offsetY = -5;
-                    
                     const rotatedX = offsetX * Math.cos(angle) - offsetY * Math.sin(angle);
                     const rotatedY = offsetX * Math.sin(angle) + offsetY * Math.cos(angle);
-                    
                     eye.x = seg.x + rotatedX * size;
                     eye.y = seg.y + rotatedY * size;
                     eye.setScale(size);
                     eye.setDepth(12);
                 });
+                
+                // Update wings
+                const lWing = seg.parrotFeatures[5];
+                const rWing = seg.parrotFeatures[6];
+                const wingAngle = angle + Math.PI/2;
+                lWing.x = seg.x + Math.cos(angle - Math.PI/2) * (15 * size);
+                lWing.y = seg.y + Math.sin(angle - Math.PI/2) * (15 * size);
+                lWing.rotation = wingAngle;
+                lWing.setScale(size, lWing.scaleY); // Maintain flap scaleY
+                
+                rWing.x = seg.x + Math.cos(angle + Math.PI/2) * (15 * size);
+                rWing.y = seg.y + Math.sin(angle + Math.PI/2) * (15 * size);
+                rWing.rotation = wingAngle;
+                rWing.setScale(size, rWing.scaleY);
             }
             seg.setDepth(5 - i * 0.01);
         });
@@ -260,7 +316,7 @@ function handleGameUpdate(data) {
     // Update mini-map
     if (scene.miniMapDots) {
         scene.miniMapDots.clear();
-        const miniMapSize = 200;
+        const miniMapSize = 400;
         const scale = miniMapSize / (mapRadius * 2);
 
         data.Parrots.forEach(pData => {
@@ -268,7 +324,7 @@ function handleGameUpdate(data) {
             scene.miniMapDots.fillStyle(isLocal ? 0xffffff : 0xff0000, isLocal ? 1 : 0.6);
             const dotX = pData.X * scale;
             const dotY = pData.Y * scale;
-            scene.miniMapDots.fillCircle(dotX, dotY, isLocal ? 3 : 2);
+            scene.miniMapDots.fillCircle(dotX, dotY, isLocal ? 4 : 3);
         });
     }
 
@@ -339,8 +395,8 @@ window.addEventListener('resize', () => {
     game.scale.resize(window.innerWidth, window.innerHeight);
     const scene = game.scene.scenes[0];
     if (scene && scene.miniMapContainer) {
-        const miniMapSize = 200;
-        const miniMapMargin = 20;
-        scene.miniMapContainer.setPosition(window.innerWidth - miniMapSize - miniMapMargin, window.innerHeight - miniMapSize - miniMapMargin);
+        const miniMapSize = 400;
+        const miniMapMargin = 30;
+        scene.miniMapContainer.setPosition(miniMapMargin, window.innerHeight - miniMapSize - miniMapMargin);
     }
 });

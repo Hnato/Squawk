@@ -23,12 +23,16 @@ namespace Squawk.Server
 
         private Vector2 GetRandomMapPosition()
         {
-            float angle = (float)(_random.NextDouble() * Math.PI * 2);
-            float dist = (float)(Math.Sqrt(_random.NextDouble()) * MapRadius);
-            return new Vector2(
-                (float)(Math.Cos(angle) * dist) + MapRadius,
-                (float)(Math.Sin(angle) * dist) + MapRadius
-            );
+            // Uniform distribution in a circle
+            // r = R * sqrt(random)
+            // theta = 2 * pi * random
+            double r = MapRadius * Math.Sqrt(_random.NextDouble());
+            double theta = _random.NextDouble() * 2 * Math.PI;
+            
+            float x = (float)(r * Math.Cos(theta)) + MapRadius;
+            float y = (float)(r * Math.Sin(theta)) + MapRadius;
+            
+            return new Vector2(x, y);
         }
 
         private void SpawnInitialFeathers()
@@ -239,16 +243,11 @@ namespace Squawk.Server
             // Notify player of death if it's a real player
             if (!parrot.IsBot)
             {
-                // We'll need a reference to the socket or a way to send this message
-                // For now, the Program.cs will handle sending the death message when it sees IsAlive = false
+                // Notification handled in Program.cs
             }
 
-            // Spawn death feathers
-            foreach (var seg in parrot.Segments)
-            {
-                if (_random.NextDouble() < 0.5) // Don't spawn for every segment to avoid clutter
-                    SpawnFeather(FeatherType.DEATH_FEATHER, seg, 2.0f);
-            }
+            // In V9, we remove the death feathers or keep them minimal to ensure total cleanup
+            // The user requested NO trace after death
         }
 
         private void SpawnFeather(FeatherType type, Vector2? pos = null, float? value = null)
