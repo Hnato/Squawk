@@ -12,21 +12,16 @@ namespace Squawk.Server.Models
 
     public class FeatherEnergy
     {
-        public string Id { get; set; }
+        public string Id { get; set; } = Guid.NewGuid().ToString();
         public Vector2 Position { get; set; }
         public float Value { get; set; }
         public FeatherType Type { get; set; }
-
-        public FeatherEnergy()
-        {
-            Id = Guid.NewGuid().ToString();
-        }
     }
 
     public class Parrot
     {
-        public string Id { get; set; }
-        public string Name { get; set; }
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = "Papuga";
         public Vector2 Position { get; set; }
         public float Direction { get; set; } // Angle in radians
         public float Energy { get; set; } = 10f;
@@ -70,7 +65,7 @@ namespace Squawk.Server.Models
     {
         public BotState State { get; set; } = BotState.WANDER;
         public Vector2? TargetPosition { get; set; }
-        public string TargetEntityId { get; set; }
+        public string? TargetEntityId { get; set; }
         public float StateTimer { get; set; }
 
         public BotParrot(string id, string name, Vector2 startPos) : base(id, name, startPos)

@@ -59,40 +59,58 @@ function create() {
     
     // Circular map background
     const bg = this.add.graphics();
+    bg.setDepth(-10); // Bardzo głęboko pod wszystkim
     bg.fillStyle(0x050505, 1);
     bg.fillCircle(mapRadius, mapRadius, mapRadius);
     
     // Grid inside circle
     const grid = this.add.grid(mapRadius, mapRadius, mapRadius * 2, mapRadius * 2, 200, 200, 0x000000, 0, 0xffffff, 0.03);
+    grid.setDepth(-9);
     
     // Circular Border
     const border = this.add.graphics();
+    border.setDepth(-8);
     border.lineStyle(10, 0xffffff, 0.1);
     border.strokeCircle(mapRadius, mapRadius, mapRadius);
 
     // V14: Store map graphics for dynamic updates
     this.mapGraphics = { bg, grid, border };
 
+    // Ustawienie kamery na środku mapy na starcie
+    cam.centerOn(mapRadius, mapRadius);
+
     // Mini-map setup
     const miniMapSize = 200; 
     const miniMapMargin = 20;
     this.miniMapContainer = this.add.container(miniMapMargin, this.scale.height - miniMapSize - miniMapMargin);
     this.miniMapContainer.setScrollFactor(0);
-    this.miniMapContainer.setDepth(1000); 
-    this.miniMapContainer.setVisible(false); // Hide by default until join
+    this.miniMapContainer.setDepth(1001); // Nad tłem i obiektami gry
+    this.miniMapContainer.setVisible(false);
 
     const miniMapBg = this.add.graphics();
     miniMapBg.fillStyle(0x000000, 0.7);
     miniMapBg.fillCircle(miniMapSize/2, miniMapSize/2, miniMapSize/2);
-    miniMapBg.lineStyle(3, 0x00ffa3, 0.5);
+    miniMapBg.lineStyle(2, 0xffffff, 0.3);
     miniMapBg.strokeCircle(miniMapSize/2, miniMapSize/2, miniMapSize/2);
     this.miniMapContainer.add(miniMapBg);
 
-    this.miniMapDots = this.add.graphics();
-    this.miniMapContainer.add(this.miniMapDots);
+    // Warstwa dla węży (linie)
+    this.miniMapSnakes = this.add.graphics();
+    this.miniMapContainer.add(this.miniMapSnakes);
+
+    // Warstwa dla gracza (punkt)
+    this.miniMapPlayer = this.add.graphics();
+    this.miniMapContainer.add(this.miniMapPlayer);
+
+    // Maskowanie minimapy (tylko wewnątrz koła)
+    const maskShape = this.make.graphics();
+    maskShape.fillStyle(0xffffff);
+    maskShape.fillCircle(miniMapSize/2, miniMapSize/2, miniMapSize/2);
+    const mask = maskShape.createGeometryMask();
+    this.miniMapSnakes.setMask(mask);
 
     // V13: Debug Label
-    this.miniMapDebug = this.add.text(miniMapSize/2, miniMapSize + 5, 'MiniMap: INIT', { fontSize: '10px', fill: '#00ffa3' }).setOrigin(0.5);
+    this.miniMapDebug = this.add.text(miniMapSize/2, miniMapSize + 10, '', { fontSize: '10px', fill: '#ffffff' }).setOrigin(0.5);
     this.miniMapContainer.add(this.miniMapDebug);
     console.log('MiniMap system initialized at:', miniMapMargin, this.scale.height - miniMapSize - miniMapMargin);
 
@@ -134,6 +152,7 @@ function connectToServer(name) {
                 // MapWidth in circular map is now used as Radius if provided
                 if (data.MapRadius) {
                     mapRadius = data.MapRadius;
+                    console.log('Map radius updated to:', mapRadius);
                     // Update map graphics if map size changed
                     const scene = game.scene.scenes[0];
                     if (scene && scene.mapGraphics) {
@@ -148,30 +167,33 @@ function connectToServer(name) {
                         border.clear();
                         border.lineStyle(10, 0xffffff, 0.1);
                         border.strokeCircle(mapRadius, mapRadius, mapRadius);
+
+                        // Centrowanie kamery na nowym środku mapy
+                        scene.cameras.main.centerOn(mapRadius, mapRadius);
                     }
                 }
             } else if (data.Type === 'update') {
-            handleGameUpdate(data);
-        } else if (data.Type === 'death') {
-            // V14: Optimization - Throttle leaderboard and death messages
-            // Handle player death
-            playerId = null;
-            if (socket) {
-                socket.close();
+                handleGameUpdate(data);
+            } else if (data.Type === 'death') {
+                // V14: Optimization - Throttle leaderboard and death messages
+                // Handle player death
+                playerId = null;
+                if (socket) {
+                    socket.close();
+                }
+                document.getElementById('login').style.display = 'block';
+                document.getElementById('leaderboard').style.display = 'none';
+                const scene = game.scene.scenes[0];
+                if (scene && scene.miniMapContainer) {
+                    scene.miniMapContainer.setVisible(false);
+                }
+            } else if (data.Type === 'leaderboard') {
+                updateLeaderboard(data.Entries);
             }
-            document.getElementById('login').style.display = 'block';
-            document.getElementById('leaderboard').style.display = 'none';
-            const scene = game.scene.scenes[0];
-            if (scene && scene.miniMapContainer) {
-                scene.miniMapContainer.setVisible(false);
-            }
-        } else if (data.Type === 'leaderboard') {
-            updateLeaderboard(data.Entries);
+        } catch (err) {
+            console.error('Error parsing socket message:', err, event.data);
         }
-    } catch (err) {
-        console.error('Error parsing socket message:', err, event.data);
-    }
-};
+    };
 
     socket.onclose = () => {
         console.log('Rozłączono z serwerem');
@@ -222,6 +244,8 @@ function handleGameUpdate(data) {
     });
 
     data.Parrots.forEach(pData => {
+        if (!pData || !pData.Id) return;
+        
         // Create or update player
         if (!players[pData.Id]) {
             let colorIndex = pData.Name.length % COLORS.length;
@@ -324,7 +348,8 @@ function handleGameUpdate(data) {
         }
 
         // V12: Optimization - Culling (Don't update if far off screen)
-        const isVisible = (cam.worldView && cam.worldView.contains(pData.X, pData.Y)) || distToPlayer < 1000;
+        // const isVisible = (cam.worldView && cam.worldView.contains(pData.X, pData.Y)) || distToPlayer < 1000;
+        const isVisible = true; // Tymczasowo wymuszamy widoczność do debugowania
         
         if (isVisible) {
             p.nameText.setVisible(true);
@@ -401,6 +426,7 @@ function handleGameUpdate(data) {
                 tint: p.color.base,
                 maxParticles: 5
             });
+            scene.time.delayedCall(400, () => emitter.destroy());
         }
         p.lastEnergy = pData.Energy;
 
@@ -416,61 +442,36 @@ function handleGameUpdate(data) {
     });
 
     // Update mini-map
-    if (scene.miniMapDots) {
-        scene.miniMapDots.clear();
+    if (scene.miniMapSnakes && scene.miniMapPlayer) {
+        scene.miniMapSnakes.clear();
+        scene.miniMapPlayer.clear();
         const miniMapSize = 200;
         const scale = miniMapSize / (mapRadius * 2);
 
-        // V13: Diagnostic log (once per 100 frames)
-        if (Date.now() % 100 < 20) {
-            if (scene.miniMapDebug) {
-                scene.miniMapDebug.setText(`Map: ${data.Parrots.length}P, ${data.Feathers.length}F`);
-                if (!scene.miniMapContainer.visible) console.warn('MiniMap container is hidden!');
-                if (scene.miniMapContainer.alpha < 0.1) console.warn('MiniMap container is transparent!');
-            }
-        }
-
-        // Draw Feathers (Food) - Optimized: only draw larger/special ones or subset
-        data.Feathers.forEach((fData, index) => {
-            // Optimization: Draw every 2nd feather if count is high (> 200)
-            if (data.Feathers.length > 200 && index % 2 !== 0) return;
-            
-            let color = 0xaaaaaa;
-            if (fData.Type === 0) color = 0x00ffa3;
-            else if (fData.Type === 1) color = 0xffffff;
-            else if (fData.Type === 2) color = 0xff4d6d;
-
-            const dotX = fData.X * scale;
-            const dotY = fData.Y * scale;
-            
-            // Only draw if within minimap circle bounds (approx)
-            const distSq = Math.pow(dotX - miniMapSize/2, 2) + Math.pow(dotY - miniMapSize/2, 2);
-            if (distSq <= Math.pow(miniMapSize/2, 2)) {
-                scene.miniMapDots.fillStyle(color, 0.4);
-                scene.miniMapDots.fillCircle(dotX, dotY, 1.5);
-            }
-        });
-
-        // Draw Parrots (Players/Bots)
+        // Draw Parrots as smooth lines
         data.Parrots.forEach(pData => {
+            if (!pData.Segments || pData.Segments.length < 2) return;
+
             const isLocal = pData.Id === playerId;
-            const dotX = pData.X * scale;
-            const dotY = pData.Y * scale;
+            const color = isLocal ? 0xffffff : (players[pData.Id]?.color?.base || 0xff0000);
             
-            const distSq = Math.pow(dotX - miniMapSize/2, 2) + Math.pow(dotY - miniMapSize/2, 2);
-            if (distSq <= Math.pow(miniMapSize/2, 2)) {
-                scene.miniMapDots.fillStyle(isLocal ? 0xffffff : 0xff0000, isLocal ? 1 : 0.8);
-                scene.miniMapDots.fillCircle(dotX, dotY, isLocal ? 5 : 4);
-                
-                // V13: Direction indicator for players
-                if (isLocal || pData.Energy > 100) {
-                    scene.miniMapDots.lineStyle(1, 0xffffff, 0.5);
-                    scene.miniMapDots.lineBetween(
-                        dotX, dotY, 
-                        dotX + Math.cos(pData.Dir) * 8, 
-                        dotY + Math.sin(pData.Dir) * 8
-                    );
-                }
+            // Rysowanie węża jako linii
+            scene.miniMapSnakes.lineStyle(2, color, isLocal ? 1 : 0.7);
+            scene.miniMapSnakes.beginPath();
+            
+            pData.Segments.forEach((seg, idx) => {
+                const sx = seg.X * scale;
+                const sy = seg.Y * scale;
+                if (idx === 0) scene.miniMapSnakes.moveTo(sx, sy);
+                else scene.miniMapSnakes.lineTo(sx, sy);
+            });
+            
+            scene.miniMapSnakes.strokePath();
+
+            // Specjalny znacznik dla głowy lokalnego gracza
+            if (isLocal) {
+                scene.miniMapPlayer.fillStyle(0xffffff, 1);
+                scene.miniMapPlayer.fillCircle(pData.X * scale, pData.Y * scale, 3);
             }
         });
     }
@@ -491,36 +492,38 @@ function handleGameUpdate(data) {
             if (!fData || !fData.Id) return;
             
             if (!feathers[fData.Id]) {
-            let color = 0xf1c40f;
-            let radius = 6;
-            if (fData.Type === 0) { // WORLD_FEATHER
-                // Random color for world feathers
-                const foodColors = [0x00ffa3, 0x00d1ff, 0xfff500, 0xff005c, 0xff9100, 0x00ff22];
-                color = foodColors[Math.floor(Math.random() * foodColors.length)];
-            } else if (fData.Type === 1) { // BOOST
-                color = 0xffffff;
-                radius = 8;
-            } else if (fData.Type === 2) { // DEATH
-                color = 0xff4d6d;
-                radius = 5;
-            }
-            
-            const feather = scene.add.circle(fData.X, fData.Y, radius * fData.Value, color);
-            feather.setStrokeStyle(1, 0xffffff, 0.3);
-            feathers[fData.Id] = feather;
+                let color = 0xf1c40f;
+                let radius = 6;
+                if (fData.Type === 0) { // WORLD_FEATHER
+                    // Random color for world feathers
+                    const foodColors = [0x00ffa3, 0x00d1ff, 0xfff500, 0xff005c, 0xff9100, 0x00ff22];
+                    color = foodColors[Math.floor(Math.random() * foodColors.length)];
+                } else if (fData.Type === 1) { // BOOST
+                    color = 0xffffff;
+                    radius = 8;
+                } else if (fData.Type === 2) { // DEATH
+                    color = 0xff4d6d;
+                    radius = 5;
+                }
+                
+                const feather = scene.add.circle(fData.X, fData.Y, radius * fData.Value, color);
+                feather.setStrokeStyle(1, 0xffffff, 0.3);
+                feathers[fData.Id] = feather;
 
-            // Simple pulse animation for feathers
-            scene.tweens.add({
-                targets: feather,
-                scale: 1.2,
-                duration: 800 + Math.random() * 400,
-                yoyo: true,
-                repeat: -1,
-                ease: 'Sine.easeInOut'
-            });
-        }
-    });
+                // Simple pulse animation for feathers
+                scene.tweens.add({
+                    targets: feather,
+                    scale: 1.2,
+                    duration: 800 + Math.random() * 400,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: 'Sine.easeInOut'
+                });
+            }
+        });
+    }
     } catch (err) {
+
         console.error('CRITICAL: Error in handleGameUpdate:', err);
     }
 }

@@ -27,9 +27,6 @@ namespace Squawk.Server
 
             Console.WriteLine($"Client path: {_clientPath}");
 
-            // Start HTTP Server for client files
-            StartHttpServer(5005);
-
             // Start WebSocket Server
             var server = new WebSocketServer("ws://0.0.0.0:5004");
             server.Start(socket =>
@@ -62,17 +59,23 @@ namespace Squawk.Server
                     try
                     {
                         var baseMsg = JsonConvert.DeserializeObject<BaseMessage>(message);
-                        if (_clients.TryGetValue(socket, out string playerId))
+                        if (baseMsg != null && _clients.TryGetValue(socket, out string? playerId) && playerId != null)
                         {
                             switch (baseMsg.Type)
                             {
                                 case MessageType.Join:
                                     var joinMsg = JsonConvert.DeserializeObject<JoinMessage>(message);
-                                    _engine.AddParrot(playerId, joinMsg.Name);
+                                    if (joinMsg != null && joinMsg.Name != null)
+                                    {
+                                        _engine.AddParrot(playerId, joinMsg.Name);
+                                    }
                                     break;
                                 case MessageType.Input:
                                     var inputMsg = JsonConvert.DeserializeObject<InputMessage>(message);
-                                    _engine.UpdateInput(playerId, inputMsg.TargetX, inputMsg.TargetY, inputMsg.IsBoosting);
+                                    if (inputMsg != null)
+                                    {
+                                        _engine.UpdateInput(playerId, inputMsg.TargetX, inputMsg.TargetY, inputMsg.IsBoosting);
+                                    }
                                     break;
                             }
                         }
@@ -85,8 +88,8 @@ namespace Squawk.Server
             });
 
             Console.WriteLine("WebSocket Server started on ws://0.0.0.0:5004");
-            Console.WriteLine("HTTP Server started on http://localhost:5005");
-            Console.WriteLine("OPEN http://localhost:5005 TO PLAY!");
+            Console.WriteLine("HTTP Server is DISABLED. Use a separate web server for the Client/ folder.");
+            // Console.WriteLine("OPEN http://localhost:12345 TO PLAY!");
 
             // Game Loop
             DateTime lastTick = DateTime.Now;
@@ -191,6 +194,7 @@ namespace Squawk.Server
 
         static void ProcessRequest(HttpListenerContext context)
         {
+            if (context.Request.Url == null) return;
             string filename = context.Request.Url.AbsolutePath.Substring(1);
             if (string.IsNullOrEmpty(filename)) filename = "index.html";
 

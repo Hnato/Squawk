@@ -14,19 +14,19 @@ namespace Squawk.Server.Models
 
     public class BaseMessage
     {
-        public string Type { get; set; }
+        public string Type { get; set; } = string.Empty;
     }
 
     public class WelcomeMessage : BaseMessage
     {
-        public string PlayerId { get; set; }
+        public string PlayerId { get; set; } = string.Empty;
         public float MapRadius { get; set; }
         public WelcomeMessage() => Type = MessageType.Welcome;
     }
 
     public class JoinMessage : BaseMessage
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = "Papuga";
         public JoinMessage() => Type = MessageType.Join;
     }
 
@@ -40,27 +40,27 @@ namespace Squawk.Server.Models
 
     public class GameUpdateMessage : BaseMessage
     {
-        public List<ParrotData> Parrots { get; set; }
-        public List<FeatherData> Feathers { get; set; }
+        public List<ParrotData> Parrots { get; set; } = new List<ParrotData>();
+        public List<FeatherData> Feathers { get; set; } = new List<FeatherData>();
         public GameUpdateMessage() => Type = MessageType.Update;
     }
 
     public class ParrotData
     {
-        public string Id { get; set; }
-        public string Name { get; set; }
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
         public float X { get; set; }
         public float Y { get; set; }
         public float Dir { get; set; }
         public float Energy { get; set; }
         public float Size { get; set; }
-        public List<Vector2> Segments { get; set; }
+        public List<Vector2> Segments { get; set; } = new List<Vector2>();
         public bool IsBoosting { get; set; }
     }
 
     public class FeatherData
     {
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
         public float X { get; set; }
         public float Y { get; set; }
         public float Value { get; set; }
@@ -69,13 +69,13 @@ namespace Squawk.Server.Models
 
     public class LeaderboardEntry
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public float Score { get; set; }
     }
 
     public class LeaderboardMessage : BaseMessage
     {
-        public List<LeaderboardEntry> Entries { get; set; }
+        public List<LeaderboardEntry> Entries { get; set; } = new List<LeaderboardEntry>();
         public LeaderboardMessage() => Type = MessageType.Leaderboard;
     }
 }
