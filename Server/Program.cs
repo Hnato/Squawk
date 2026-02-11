@@ -104,13 +104,47 @@ namespace Squawk.Server
                 var stateJson = JsonConvert.SerializeObject(state);
                 var leaderboard = _engine.GetLeaderboard();
                 var leaderboardJson = JsonConvert.SerializeObject(leaderboard);
+                var deathMsgJson = JsonConvert.SerializeObject(new BaseMessage { Type = MessageType.Death });
 
                 foreach (var client in _clients.Keys.ToList())
                 {
-                    if (client.IsAvailable)
+                    try
                     {
-                        client.Send(stateJson);
-                        client.Send(leaderboardJson);
+                        if (client != null && client.IsAvailable && _clients.TryGetValue(client, out string? playerId))
+                        {
+                            client.Send(stateJson);
+                            client.Send(leaderboardJson);
+
+                            // Check if this player just died
+                            var parrot = _engine.GetParrot(playerId);
+                            if (parrot != null && !parrot.IsAlive)
+                            {
+                                client.Send(deathMsgJson);
+                                _engine.RemoveParrot(playerId);
+                                // We don't remove from _clients yet, wait for OnClose or re-join
+                            }
+                        }
+                        else if (client != null && !client.IsAvailable)
+                        {
+                            // Cleanup unavailable clients
+                            if (_clients.TryGetValue(client, out string? pid))
+                            {
+                                _engine.RemoveParrot(pid);
+                                _clients.Remove(client);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Safely handle cases where client disconnected during the loop
+                        if (_clients.ContainsKey(client))
+                        {
+                            if (_clients.TryGetValue(client, out string? pid))
+                            {
+                                _engine.RemoveParrot(pid);
+                            }
+                            _clients.Remove(client);
+                        }
                     }
                 }
 

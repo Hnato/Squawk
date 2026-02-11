@@ -12,10 +12,10 @@ const config = {
 };
 
 const COLORS = [
-    { head: 0x00ff00, body: 0x008000 }, // Zielony
-    { head: 0xffff00, body: 0xffd700 }, // Żółty
-    { head: 0xadff2f, body: 0x32cd32 }, // Jasnozielony
-    { head: 0xdaa520, body: 0xb8860b }, // Złoty
+    { head: 0x00ffa3, body: 0x008f5d }, // Emerald
+    { head: 0x00d1ff, body: 0x00768f }, // Ocean
+    { head: 0xfff500, body: 0x8f8a00 }, // Canary
+    { head: 0xff005c, body: 0x8f0034 }, // Ruby
 ];
 
 let game = new Phaser.Game(config);
@@ -42,15 +42,30 @@ function create() {
     bg.fillCircle(mapRadius, mapRadius, mapRadius);
     
     // Grid inside circle
-    const grid = this.add.grid(mapRadius, mapRadius, mapRadius * 2, mapRadius * 2, 150, 150, 0x000000, 0, 0x00ff00, 0.05);
+    const grid = this.add.grid(mapRadius, mapRadius, mapRadius * 2, mapRadius * 2, 200, 200, 0x000000, 0, 0xffffff, 0.03);
     
     // Circular Border
     const border = this.add.graphics();
-    border.lineStyle(20, 0x00ff00, 0.8);
+    border.lineStyle(10, 0xffffff, 0.1);
     border.strokeCircle(mapRadius, mapRadius, mapRadius);
 
-    this.mapGraphics = { bg, grid, border };
-    
+    // Mini-map setup
+    const miniMapSize = 200;
+    const miniMapMargin = 20;
+    this.miniMapContainer = this.add.container(window.innerWidth - miniMapSize - miniMapMargin, window.innerHeight - miniMapSize - miniMapMargin);
+    this.miniMapContainer.setScrollFactor(0);
+    this.miniMapContainer.setDepth(100);
+
+    const miniMapBg = this.add.graphics();
+    miniMapBg.fillStyle(0x000000, 0.5);
+    miniMapBg.fillCircle(miniMapSize/2, miniMapSize/2, miniMapSize/2);
+    miniMapBg.lineStyle(1, 0xffffff, 0.2);
+    miniMapBg.strokeCircle(miniMapSize/2, miniMapSize/2, miniMapSize/2);
+    this.miniMapContainer.add(miniMapBg);
+
+    this.miniMapDots = this.add.graphics();
+    this.miniMapContainer.add(this.miniMapDots);
+
     document.getElementById('startBtn').addEventListener('click', () => {
         const name = document.getElementById('playerName').value || 'Papuga';
         connectToServer(name);
@@ -85,11 +100,19 @@ function connectToServer(name) {
                     grid.setSize(mapRadius * 2, mapRadius * 2);
                     
                     border.clear();
-                    border.lineStyle(20, 0x00ff00, 0.8);
+                    border.lineStyle(10, 0xffffff, 0.1);
                     border.strokeCircle(mapRadius, mapRadius, mapRadius);
                 }
             }
+            const name = document.getElementById('playerName').value || 'Papuga';
             socket.send(JSON.stringify({ Type: 'join', Name: name }));
+        } else if (data.Type === 'death') {
+            // Handle player death
+            playerId = null;
+            if (socket) {
+                socket.close();
+            }
+            document.getElementById('login').style.display = 'block';
         } else if (data.Type === 'update') {
             handleGameUpdate(data);
         } else if (data.Type === 'leaderboard') {
@@ -113,7 +136,10 @@ function handleGameUpdate(data) {
     // Remove disconnected
     Object.keys(players).forEach(id => {
         if (!currentIds.includes(id)) {
-            players[id].segments.forEach(s => s.destroy());
+            players[id].segments.forEach(seg => {
+                if (seg.eyes) seg.eyes.forEach(e => e.destroy());
+                seg.destroy();
+            });
             players[id].nameText.destroy();
             delete players[id];
         }
@@ -125,17 +151,25 @@ function handleGameUpdate(data) {
             let colorIndex = pData.Name.length % COLORS.length;
             if (pData.Id === playerId) colorIndex = 0; // Local player always specific color if you want
             
-            players[pData.Id] = {
-                segments: [],
-                nameText: scene.add.text(0, 0, pData.Name, { 
-                    fontSize: '16px', 
-                    fill: '#fff',
-                    fontStyle: 'bold',
-                    stroke: '#000',
-                    strokeThickness: 3
-                }).setOrigin(0.5),
-                color: COLORS[colorIndex]
-            };
+                players[pData.Id] = {
+                    segments: [],
+                    nameText: scene.add.text(0, 0, pData.Name, { 
+                        fontSize: '14px', 
+                        fill: '#ffffff',
+                        fontStyle: '600',
+                        stroke: '#000000',
+                        strokeThickness: 2,
+                        padding: { x: 4, y: 2 }
+                    }).setOrigin(0.5),
+                    color: COLORS[colorIndex]
+                };
+                // Subtly fade in name
+                players[pData.Id].nameText.setAlpha(0);
+                scene.tweens.add({
+                    targets: players[pData.Id].nameText,
+                    alpha: 0.8,
+                    duration: 500
+                });
         }
 
         const p = players[pData.Id];
@@ -144,24 +178,36 @@ function handleGameUpdate(data) {
         // Update segments
         while (p.segments.length < pData.Segments.length) {
             const isHead = p.segments.length === 0;
-            const radius = isHead ? 20 : 15;
-            const seg = scene.add.circle(0, 0, radius, isHead ? p.color.head : p.color.body);
+            const radius = isHead ? 22 : 16;
+            
+            // Parrot color logic: head is one color, body segments can alternate or have "wings" look
+            let segColor = isHead ? p.color.head : p.color.body;
+            if (!isHead && p.segments.length % 5 === 0) {
+                // Occasional colorful "feather" segment
+                segColor = p.color.head;
+            }
+
+            const seg = scene.add.circle(0, 0, radius, segColor);
             
             if (isHead) {
-                // Add simple eyes to the head
-                const leftEye = scene.add.circle(-7, -7, 4, 0xffffff);
-                const rightEye = scene.add.circle(7, -7, 4, 0xffffff);
-                const leftPupil = scene.add.circle(-7, -7, 2, 0x000000);
-                const rightPupil = scene.add.circle(7, -7, 2, 0x000000);
+                // Add Parrot Beak (dziób)
+                const beak = scene.add.triangle(0, 0, 0, -10, -8, 15, 8, 15, 0xff9100);
+                beak.setDepth(11);
                 
-                seg.eyes = [leftEye, rightEye, leftPupil, rightPupil];
+                // Add simple eyes to the head
+                const leftEye = scene.add.circle(-8, -5, 5, 0xffffff);
+                const rightEye = scene.add.circle(8, -5, 5, 0xffffff);
+                const leftPupil = scene.add.circle(-8, -5, 2.5, 0x000000);
+                const rightPupil = scene.add.circle(8, -5, 2.5, 0x000000);
+                
+                seg.parrotFeatures = [beak, leftEye, rightEye, leftPupil, rightPupil];
             }
             
             p.segments.push(seg);
         }
         while (p.segments.length > pData.Segments.length) {
             const seg = p.segments.pop();
-            if (seg.eyes) seg.eyes.forEach(e => e.destroy());
+            if (seg.parrotFeatures) seg.parrotFeatures.forEach(e => e.destroy());
             seg.destroy();
         }
 
@@ -171,14 +217,22 @@ function handleGameUpdate(data) {
             seg.y = pos.Y;
             seg.setScale(size);
             
-            if (seg.eyes) {
-                // Update eyes position and rotation based on movement
+            if (seg.parrotFeatures) {
                 const angle = i < pData.Segments.length - 1 ? 
                     Math.atan2(pData.Segments[i].Y - pData.Segments[i+1].Y, pData.Segments[i].X - pData.Segments[i+1].X) : 0;
                 
-                seg.eyes.forEach((eye, eyeIdx) => {
-                    const offsetX = eyeIdx < 2 ? (eyeIdx === 0 ? -7 : 7) : (eyeIdx === 2 ? -7 : 7);
-                    const offsetY = -7;
+                // Update beak
+                const beak = seg.parrotFeatures[0];
+                const beakDist = 15 * size;
+                beak.x = seg.x + Math.cos(angle) * beakDist;
+                beak.y = seg.y + Math.sin(angle) * beakDist;
+                beak.rotation = angle + Math.PI/2;
+                beak.setScale(size);
+
+                // Update eyes
+                seg.parrotFeatures.slice(1).forEach((eye, eyeIdx) => {
+                    const offsetX = eyeIdx < 2 ? (eyeIdx === 0 ? -8 : 8) : (eyeIdx === 2 ? -8 : 8);
+                    const offsetY = -5;
                     
                     const rotatedX = offsetX * Math.cos(angle) - offsetY * Math.sin(angle);
                     const rotatedY = offsetX * Math.sin(angle) + offsetY * Math.cos(angle);
@@ -186,10 +240,10 @@ function handleGameUpdate(data) {
                     eye.x = seg.x + rotatedX * size;
                     eye.y = seg.y + rotatedY * size;
                     eye.setScale(size);
-                    eye.setDepth(10);
+                    eye.setDepth(12);
                 });
             }
-            seg.setDepth(5 - i * 0.1);
+            seg.setDepth(5 - i * 0.01);
         });
 
         p.nameText.x = pData.X;
@@ -202,6 +256,21 @@ function handleGameUpdate(data) {
             cam.setZoom(Phaser.Math.Linear(cam.zoom, zoom, 0.1));
         }
     });
+
+    // Update mini-map
+    if (scene.miniMapDots) {
+        scene.miniMapDots.clear();
+        const miniMapSize = 200;
+        const scale = miniMapSize / (mapRadius * 2);
+
+        data.Parrots.forEach(pData => {
+            const isLocal = pData.Id === playerId;
+            scene.miniMapDots.fillStyle(isLocal ? 0xffffff : 0xff0000, isLocal ? 1 : 0.6);
+            const dotX = pData.X * scale;
+            const dotY = pData.Y * scale;
+            scene.miniMapDots.fillCircle(dotX, dotY, isLocal ? 3 : 2);
+        });
+    }
 
     // Update feathers
     const currentFeatherIds = data.Feathers.map(f => f.Id);
@@ -216,8 +285,12 @@ function handleGameUpdate(data) {
         if (!feathers[fData.Id]) {
             let color = 0xf1c40f;
             let radius = 6;
-            if (fData.Type === 1) { // BOOST
-                color = 0x00f2ff;
+            if (fData.Type === 0) { // WORLD_FEATHER
+                // Random color for world feathers
+                const foodColors = [0x00ffa3, 0x00d1ff, 0xfff500, 0xff005c, 0xff9100, 0x00ff22];
+                color = foodColors[Math.floor(Math.random() * foodColors.length)];
+            } else if (fData.Type === 1) { // BOOST
+                color = 0xffffff;
                 radius = 8;
             } else if (fData.Type === 2) { // DEATH
                 color = 0xff4d6d;
@@ -225,7 +298,7 @@ function handleGameUpdate(data) {
             }
             
             const feather = scene.add.circle(fData.X, fData.Y, radius * fData.Value, color);
-            feather.setStrokeStyle(2, 0xffffff, 0.5);
+            feather.setStrokeStyle(1, 0xffffff, 0.3);
             feathers[fData.Id] = feather;
 
             // Simple pulse animation for feathers
@@ -264,4 +337,10 @@ function update() {
 
 window.addEventListener('resize', () => {
     game.scale.resize(window.innerWidth, window.innerHeight);
+    const scene = game.scene.scenes[0];
+    if (scene && scene.miniMapContainer) {
+        const miniMapSize = 200;
+        const miniMapMargin = 20;
+        scene.miniMapContainer.setPosition(window.innerWidth - miniMapSize - miniMapMargin, window.innerHeight - miniMapSize - miniMapMargin);
+    }
 });

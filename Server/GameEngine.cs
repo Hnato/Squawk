@@ -7,9 +7,9 @@ namespace Squawk.Server
 {
     public class GameEngine
     {
-        public const float MapRadius = 7500f; // 5x larger than before (was 3000 width, so radius 1500 * 5 = 7500)
-        public const int MaxFeathers = 1000; // Increased for larger map
-        public const int BotCount = 30; // More bots for larger map
+        public const float MapRadius = 7500f; // 5x larger than before
+        public const int MaxFeathers = 12500; // Half of 25000
+        public const int BotCount = 40; // More bots for larger map
 
         private Dictionary<string, Parrot> _parrots = new Dictionary<string, Parrot>();
         private List<FeatherEnergy> _feathers = new List<FeatherEnergy>();
@@ -52,16 +52,26 @@ namespace Squawk.Server
         {
             var pos = GetRandomMapPosition();
             Parrot parrot;
-            if (isBot)
-                parrot = new BotParrot(id, name, pos);
-            else
-                parrot = new Parrot(id, name, pos);
             
             lock (_parrots)
             {
+                // If player already exists (re-joining), update it
+                if (isBot)
+                    parrot = new BotParrot(id, name, pos);
+                else
+                    parrot = new Parrot(id, name, pos);
+                
                 _parrots[id] = parrot;
             }
             return parrot;
+        }
+
+        public Parrot? GetParrot(string id)
+        {
+            lock (_parrots)
+            {
+                return _parrots.TryGetValue(id, out var parrot) ? parrot : null;
+            }
         }
 
         public void RemoveParrot(string id)
@@ -225,6 +235,14 @@ namespace Squawk.Server
         private void KillParrot(Parrot parrot)
         {
             parrot.IsAlive = false;
+            
+            // Notify player of death if it's a real player
+            if (!parrot.IsBot)
+            {
+                // We'll need a reference to the socket or a way to send this message
+                // For now, the Program.cs will handle sending the death message when it sees IsAlive = false
+            }
+
             // Spawn death feathers
             foreach (var seg in parrot.Segments)
             {
