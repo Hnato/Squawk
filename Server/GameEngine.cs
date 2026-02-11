@@ -7,9 +7,9 @@ namespace Squawk.Server
 {
     public class GameEngine
     {
-        public const float MapRadius = 7500f; // 5x larger than before
-        public const int MaxFeathers = 12500; // Half of 25000
-        public const int BotCount = 40; // More bots for larger map
+        public const float MapRadius = 7200f; // 5x larger than before
+        public const int MaxFeathers = 1000; // Half of 25000
+        public const int BotCount = 32; // More bots for larger map
 
         private Dictionary<string, Parrot> _parrots = new Dictionary<string, Parrot>();
         private List<FeatherEnergy> _feathers = new List<FeatherEnergy>();
