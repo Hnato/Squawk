@@ -74,11 +74,12 @@ function create() {
     this.mapGraphics = { bg, grid, border };
 
     // Mini-map setup
-    const miniMapSize = 350; 
+    const miniMapSize = 200; 
     const miniMapMargin = 20;
     this.miniMapContainer = this.add.container(miniMapMargin, this.scale.height - miniMapSize - miniMapMargin);
     this.miniMapContainer.setScrollFactor(0);
-    this.miniMapContainer.setDepth(1000); // Ensure it's on top of everything
+    this.miniMapContainer.setDepth(1000); 
+    this.miniMapContainer.setVisible(false); // Hide by default until join
 
     const miniMapBg = this.add.graphics();
     miniMapBg.fillStyle(0x000000, 0.7);
@@ -95,10 +96,21 @@ function create() {
     this.miniMapContainer.add(this.miniMapDebug);
     console.log('MiniMap system initialized at:', miniMapMargin, this.scale.height - miniMapSize - miniMapMargin);
 
+    // V14: Global Error Boundary
+    window.onerror = function(message, source, lineno, colno, error) {
+        console.error('GLOBAL JS ERROR:', message, 'at', source, ':', lineno, ':', colno);
+        return false;
+    };
+
     document.getElementById('startBtn').addEventListener('click', () => {
         const name = document.getElementById('playerName').value || 'Papuga';
         connectToServer(name);
         document.getElementById('login').style.display = 'none';
+        document.getElementById('leaderboard').style.display = 'block';
+        const scene = game.scene.scenes[0];
+        if (scene && scene.miniMapContainer) {
+            scene.miniMapContainer.setVisible(true);
+        }
     });
 }
 
@@ -107,7 +119,8 @@ function connectToServer(name) {
     socket = new WebSocket('ws://localhost:5004');
 
     socket.onopen = () => {
-        console.log('Połączono z serwerem');
+        console.log('Połączono z serwerem, wysyłanie prośby o dołączenie...');
+        socket.send(JSON.stringify({ Type: 'join', Name: name }));
     };
 
     socket.onmessage = (event) => {
@@ -118,36 +131,40 @@ function connectToServer(name) {
             if (data.Type === 'welcome') {
                 playerId = data.PlayerId;
                 console.log('Welcome received, playerId:', playerId);
-            // MapWidth in circular map is now used as Radius if provided
-            if (data.MapRadius) {
-                mapRadius = data.MapRadius;
-                // Update map graphics if map size changed
-                const scene = game.scene.scenes[0];
-                if (scene && scene.mapGraphics) {
-                    const { bg, grid, border } = scene.mapGraphics;
-                    bg.clear();
-                    bg.fillStyle(0x050505, 1);
-                    bg.fillCircle(mapRadius, mapRadius, mapRadius);
-                    
-                    grid.setPosition(mapRadius, mapRadius);
-                    grid.setSize(mapRadius * 2, mapRadius * 2);
-                    
-                    border.clear();
-                    border.lineStyle(10, 0xffffff, 0.1);
-                    border.strokeCircle(mapRadius, mapRadius, mapRadius);
+                // MapWidth in circular map is now used as Radius if provided
+                if (data.MapRadius) {
+                    mapRadius = data.MapRadius;
+                    // Update map graphics if map size changed
+                    const scene = game.scene.scenes[0];
+                    if (scene && scene.mapGraphics) {
+                        const { bg, grid, border } = scene.mapGraphics;
+                        bg.clear();
+                        bg.fillStyle(0x050505, 1);
+                        bg.fillCircle(mapRadius, mapRadius, mapRadius);
+                        
+                        grid.setPosition(mapRadius, mapRadius);
+                        grid.setSize(mapRadius * 2, mapRadius * 2);
+                        
+                        border.clear();
+                        border.lineStyle(10, 0xffffff, 0.1);
+                        border.strokeCircle(mapRadius, mapRadius, mapRadius);
+                    }
                 }
-            }
-            const name = document.getElementById('playerName').value || 'Papuga';
-            socket.send(JSON.stringify({ Type: 'join', Name: name }));
+            } else if (data.Type === 'update') {
+            handleGameUpdate(data);
         } else if (data.Type === 'death') {
+            // V14: Optimization - Throttle leaderboard and death messages
             // Handle player death
             playerId = null;
             if (socket) {
                 socket.close();
             }
             document.getElementById('login').style.display = 'block';
-        } else if (data.Type === 'update') {
-            handleGameUpdate(data);
+            document.getElementById('leaderboard').style.display = 'none';
+            const scene = game.scene.scenes[0];
+            if (scene && scene.miniMapContainer) {
+                scene.miniMapContainer.setVisible(false);
+            }
         } else if (data.Type === 'leaderboard') {
             updateLeaderboard(data.Entries);
         }
@@ -251,7 +268,9 @@ function handleGameUpdate(data) {
         
         // V12: Optimization - LOD (Level of Detail)
         // If too many players or far away, simplify rendering
-        const distToPlayer = Phaser.Math.Distance.Between(cam.worldView.centerX, cam.worldView.centerY, pData.X, pData.Y);
+        if (!pData.Segments || pData.Segments.length === 0) return;
+
+        const distToPlayer = Phaser.Math.Distance.Between(cam.worldView ? cam.worldView.centerX : 0, cam.worldView ? cam.worldView.centerY : 0, pData.X, pData.Y);
         const isFar = distToPlayer > 1500;
         const maxSegmentsLOD = isFar ? Math.min(pData.Segments.length, 5) : pData.Segments.length;
 
@@ -399,7 +418,7 @@ function handleGameUpdate(data) {
     // Update mini-map
     if (scene.miniMapDots) {
         scene.miniMapDots.clear();
-        const miniMapSize = 350;
+        const miniMapSize = 200;
         const scale = miniMapSize / (mapRadius * 2);
 
         // V13: Diagnostic log (once per 100 frames)
@@ -457,16 +476,21 @@ function handleGameUpdate(data) {
     }
 
     // Update feathers
-    const currentFeatherIds = data.Feathers.map(f => f.Id);
+    const currentFeatherIds = (data && data.Feathers) ? data.Feathers.map(f => f.Id) : [];
     Object.keys(feathers).forEach(id => {
         if (!currentFeatherIds.includes(id)) {
-            feathers[id].destroy();
+            if (feathers[id] && typeof feathers[id].destroy === 'function') {
+                feathers[id].destroy();
+            }
             delete feathers[id];
         }
     });
 
-    data.Feathers.forEach(fData => {
-        if (!feathers[fData.Id]) {
+    if (data && data.Feathers) {
+        data.Feathers.forEach(fData => {
+            if (!fData || !fData.Id) return;
+            
+            if (!feathers[fData.Id]) {
             let color = 0xf1c40f;
             let radius = 6;
             if (fData.Type === 0) { // WORLD_FEATHER
@@ -507,26 +531,36 @@ function updateLeaderboard(entries) {
 }
 
 function update() {
-    if (!socket || socket.readyState !== WebSocket.OPEN || !playerId) return;
+    if (!socket || socket.readyState !== WebSocket.OPEN || !playerId || !cam) return;
 
-    const pointer = this.input.activePointer;
-    const worldPoint = cam.getWorldPoint(pointer.x, pointer.y);
+    try {
+        const pointer = this.input.activePointer;
+        if (!pointer) return;
+        
+        const worldPoint = cam.getWorldPoint(pointer.x, pointer.y);
+        if (!worldPoint) return;
 
-    const isBoosting = cursors.space.isDown || pointer.isDown;
+        const isBoosting = (cursors && cursors.space && cursors.space.isDown) || pointer.isDown;
 
-    socket.send(JSON.stringify({
-        Type: 'input',
-        TargetX: worldPoint.x,
-        TargetY: worldPoint.y,
-        IsBoosting: isBoosting
-    }));
+        socket.send(JSON.stringify({
+            Type: 'input',
+            TargetX: worldPoint.x,
+            TargetY: worldPoint.y,
+            IsBoosting: isBoosting
+        }));
+    } catch (err) {
+        // Silent fail for input to avoid console spam
+    }
 }
 
 window.addEventListener('resize', () => {
-    game.scale.resize(window.innerWidth, window.innerHeight);
-    const scene = game.scene.scenes[0];
+    if (game && game.scale) {
+        game.scale.resize(window.innerWidth, window.innerHeight);
+    }
+    
+    const scene = (game && game.scene && game.scene.scenes) ? game.scene.scenes[0] : null;
     if (scene && scene.miniMapContainer) {
-        const miniMapSize = 350;
+        const miniMapSize = 200;
         const miniMapMargin = 20;
         scene.miniMapContainer.setPosition(miniMapMargin, scene.scale.height - miniMapSize - miniMapMargin);
     }

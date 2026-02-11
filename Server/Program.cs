@@ -90,11 +90,13 @@ namespace Squawk.Server
 
             // Game Loop
             DateTime lastTick = DateTime.Now;
+            int frameCount = 0;
             while (true)
             {
                 DateTime now = DateTime.Now;
                 float deltaTime = (float)(now - lastTick).TotalSeconds;
                 lastTick = now;
+                frameCount++;
 
                 _engine.Update(deltaTime);
                 _engine.CleanupDead();
@@ -102,8 +104,14 @@ namespace Squawk.Server
                 // Broadcast state
                 var state = _engine.GetState();
                 var stateJson = JsonConvert.SerializeObject(state);
-                var leaderboard = _engine.GetLeaderboard();
-                var leaderboardJson = JsonConvert.SerializeObject(leaderboard);
+                
+                string? leaderboardJson = null;
+                if (frameCount % 30 == 0) // Every ~1 second
+                {
+                    var leaderboard = _engine.GetLeaderboard();
+                    leaderboardJson = JsonConvert.SerializeObject(leaderboard);
+                }
+
                 var deathMsgJson = JsonConvert.SerializeObject(new BaseMessage { Type = MessageType.Death });
 
                 foreach (var client in _clients.Keys.ToList())
@@ -113,7 +121,7 @@ namespace Squawk.Server
                         if (client != null && client.IsAvailable && _clients.TryGetValue(client, out string? playerId))
                         {
                             client.Send(stateJson);
-                            client.Send(leaderboardJson);
+                            if (leaderboardJson != null) client.Send(leaderboardJson);
 
                             // Check if this player just died
                             var parrot = _engine.GetParrot(playerId);
@@ -121,12 +129,10 @@ namespace Squawk.Server
                             {
                                 client.Send(deathMsgJson);
                                 _engine.RemoveParrot(playerId);
-                                // We don't remove from _clients yet, wait for OnClose or re-join
                             }
                         }
                         else if (client != null && !client.IsAvailable)
                         {
-                            // Cleanup unavailable clients
                             if (_clients.TryGetValue(client, out string? pid))
                             {
                                 _engine.RemoveParrot(pid);
@@ -134,9 +140,8 @@ namespace Squawk.Server
                             }
                         }
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        // Safely handle cases where client disconnected during the loop
                         if (_clients.ContainsKey(client))
                         {
                             if (_clients.TryGetValue(client, out string? pid))
