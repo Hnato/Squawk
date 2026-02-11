@@ -1,40 +1,105 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.FileProviders;
 using System;
-using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using Fleck;
+using Newtonsoft.Json;
+using Squawk.Server.Models;
 
-using Squawk.Game;
-
-var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+namespace Squawk.Server
 {
-    Args = args,
-    WebRootPath = "Client" 
-});
+    class Program
+    {
+        private static GameEngine _engine = new GameEngine();
+        private static Dictionary<IWebSocketConnection, string> _clients = new Dictionary<IWebSocketConnection, string>();
 
-builder.Services.AddRazorPages();
-builder.Services.AddControllers();
-builder.Services.AddSingleton<GameWorld>();
-builder.Services.AddHostedService<GameEngine>();
-builder.Services.AddSingleton<GameEngine>(sp => (GameEngine)sp.GetRequiredService<IHostedService>()); // Allow injection of GameEngine
+        static void Main(string[] args)
+        {
+            var server = new WebSocketServer("ws://0.0.0.0:5004");
+            server.Start(socket =>
+            {
+                socket.OnOpen = () =>
+                {
+                    string playerId = Guid.NewGuid().ToString();
+                    _clients[socket] = playerId;
+                    
+                    var welcome = new WelcomeMessage 
+                    { 
+                        PlayerId = playerId,
+                        MapWidth = GameEngine.MapWidth,
+                        MapHeight = GameEngine.MapHeight
+                    };
+                    socket.Send(JsonConvert.SerializeObject(welcome));
+                    Console.WriteLine($"Client connected: {playerId}");
+                };
 
-var app = builder.Build();
+                socket.OnClose = () =>
+                {
+                    if (_clients.TryGetValue(socket, out string playerId))
+                    {
+                        _engine.RemoveParrot(playerId);
+                        _clients.Remove(socket);
+                        Console.WriteLine($"Client disconnected: {playerId}");
+                    }
+                };
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseWebAssemblyDebugging();
+                socket.OnMessage = message =>
+                {
+                    try
+                    {
+                        var baseMsg = JsonConvert.DeserializeObject<BaseMessage>(message);
+                        if (_clients.TryGetValue(socket, out string playerId))
+                        {
+                            switch (baseMsg.Type)
+                            {
+                                case MessageType.Join:
+                                    var joinMsg = JsonConvert.DeserializeObject<JoinMessage>(message);
+                                    _engine.AddParrot(playerId, joinMsg.Name);
+                                    break;
+                                case MessageType.Input:
+                                    var inputMsg = JsonConvert.DeserializeObject<InputMessage>(message);
+                                    _engine.UpdateInput(playerId, inputMsg.TargetX, inputMsg.TargetY, inputMsg.IsBoosting);
+                                    break;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Error processing message: " + ex.Message);
+                    }
+                };
+            });
+
+            Console.WriteLine("Server started on ws://0.0.0.0:5004");
+
+            // Game Loop
+            DateTime lastTick = DateTime.Now;
+            while (true)
+            {
+                DateTime now = DateTime.Now;
+                float deltaTime = (float)(now - lastTick).TotalSeconds;
+                lastTick = now;
+
+                _engine.Update(deltaTime);
+                _engine.CleanupDead();
+
+                // Broadcast state
+                var state = _engine.GetState();
+                var stateJson = JsonConvert.SerializeObject(state);
+                var leaderboard = _engine.GetLeaderboard();
+                var leaderboardJson = JsonConvert.SerializeObject(leaderboard);
+
+                foreach (var client in _clients.Keys.ToList())
+                {
+                    if (client.IsAvailable)
+                    {
+                        client.Send(stateJson);
+                        client.Send(leaderboardJson);
+                    }
+                }
+
+                Thread.Sleep(33); // ~30 FPS
+            }
+        }
+    }
 }
-else
-{
-    app.UseExceptionHandler("/Error");
-}
-
-app.UseBlazorFrameworkFiles();
-app.UseStaticFiles();
-app.UseRouting();
-app.MapRazorPages();
-app.MapControllers();
-app.MapFallbackToFile("index.html");
-app.Urls.Add("http://0.0.0.0:5005");
-app.Run();

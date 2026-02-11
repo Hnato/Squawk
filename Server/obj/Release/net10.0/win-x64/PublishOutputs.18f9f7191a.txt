@@ -1,2 +1,0 @@
-c:\Users\user\Music\Squawk\Squawk\BlazorDebugProxy\BrowserDebugHost.runtimeconfig.json
-c:\Users\user\Music\Squawk\Squawk\Squawk.exe

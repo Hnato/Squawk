@@ -1,16 +1,68 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Squawk</title>
-    <base href="/" />
-    <link rel="stylesheet" href="css/app.css" />
-    <link rel="icon" href="logo.ico" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Squawk - Multiplayer Parrot Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #2c3e50;
+            font-family: Arial, sans-serif;
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            pointer-events: none;
+        }
+        #login {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        #login input {
+            padding: 10px;
+            margin: 10px;
+            width: 200px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        #login button {
+            padding: 10px 20px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
 <body>
-    <div id="app">Ładowanie...</div>
-    <script src="_framework/blazor.webassembly.js"></script>
+    <div id="game-container"></div>
+    <div id="ui">
+        <h3>Ranking</h3>
+        <div id="leaderboard"></div>
+    </div>
+    <div id="login">
+        <h1>Squawk</h1>
+        <input type="text" id="playerName" placeholder="Twoje imię" maxlength="15">
+        <br>
+        <button id="startBtn">Graj</button>
+    </div>
     <script src="game.js"></script>
 </body>
 </html>

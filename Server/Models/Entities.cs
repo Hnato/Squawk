@@ -1,0 +1,80 @@
+using System;
+using System.Collections.Generic;
+
+namespace Squawk.Server.Models
+{
+    public enum FeatherType
+    {
+        WORLD_FEATHER,
+        BOOST_FEATHER,
+        DEATH_FEATHER
+    }
+
+    public class FeatherEnergy
+    {
+        public string Id { get; set; }
+        public Vector2 Position { get; set; }
+        public float Value { get; set; }
+        public FeatherType Type { get; set; }
+
+        public FeatherEnergy()
+        {
+            Id = Guid.NewGuid().ToString();
+        }
+    }
+
+    public class Parrot
+    {
+        public string Id { get; set; }
+        public string Name { get; set; }
+        public Vector2 Position { get; set; }
+        public float Direction { get; set; } // Angle in radians
+        public float Energy { get; set; } = 10f;
+        public List<Vector2> Segments { get; set; } = new List<Vector2>();
+        public bool IsBoosting { get; set; }
+        public bool IsAlive { get; set; } = true;
+        public bool IsBot { get; set; }
+
+        // Constants from spec
+        public const float BaseSpeed = 150f;
+        public const float BoostSpeed = 300f;
+        public const float MinEnergyForBoost = 5f;
+        public const float BoostCost = 10f; // per second
+        public const float SegmentDistance = 20f;
+
+        public float CurrentSpeed => IsBoosting && Energy > MinEnergyForBoost ? BoostSpeed : BaseSpeed;
+        public float Size => 1f + (Energy / 100f);
+        public float TurnRate => Math.Max(1.0f, 5.0f / Size); // Higher size = lower turn rate
+
+        public Parrot(string id, string name, Vector2 startPos)
+        {
+            Id = id;
+            Name = name;
+            Position = startPos;
+            Direction = 0;
+            Segments.Add(startPos); // Head is first segment
+        }
+    }
+
+    public enum BotState
+    {
+        WANDER,
+        FEED,
+        ATTACK,
+        EVADE,
+        TRAPPED
+    }
+
+    public class BotParrot : Parrot
+    {
+        public BotState State { get; set; } = BotState.WANDER;
+        public Vector2? TargetPosition { get; set; }
+        public string TargetEntityId { get; set; }
+        public float StateTimer { get; set; }
+
+        public BotParrot(string id, string name, Vector2 startPos) : base(id, name, startPos)
+        {
+            IsBot = true;
+        }
+    }
+}
