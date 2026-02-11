@@ -1,7 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
+using System.IO;
+using System.Net;
+using System.Text;
 using Fleck;
 using Newtonsoft.Json;
 using Squawk.Server.Models;
@@ -12,9 +11,26 @@ namespace Squawk.Server
     {
         private static GameEngine _engine = new GameEngine();
         private static Dictionary<IWebSocketConnection, string> _clients = new Dictionary<IWebSocketConnection, string>();
+        private static string _clientPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Client");
 
         static void Main(string[] args)
         {
+            // Fallback for client path if running from root
+            if (!Directory.Exists(_clientPath))
+            {
+                _clientPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "Client");
+                if (!Directory.Exists(_clientPath))
+                {
+                    _clientPath = Path.Combine(Directory.GetCurrentDirectory(), "Client");
+                }
+            }
+
+            Console.WriteLine($"Client path: {_clientPath}");
+
+            // Start HTTP Server for client files
+            StartHttpServer(5005);
+
+            // Start WebSocket Server
             var server = new WebSocketServer("ws://0.0.0.0:5004");
             server.Start(socket =>
             {
@@ -22,12 +38,10 @@ namespace Squawk.Server
                 {
                     string playerId = Guid.NewGuid().ToString();
                     _clients[socket] = playerId;
-                    
                     var welcome = new WelcomeMessage 
                     { 
                         PlayerId = playerId,
-                        MapWidth = GameEngine.MapWidth,
-                        MapHeight = GameEngine.MapHeight
+                        MapRadius = GameEngine.MapRadius
                     };
                     socket.Send(JsonConvert.SerializeObject(welcome));
                     Console.WriteLine($"Client connected: {playerId}");
@@ -70,7 +84,9 @@ namespace Squawk.Server
                 };
             });
 
-            Console.WriteLine("Server started on ws://0.0.0.0:5004");
+            Console.WriteLine("WebSocket Server started on ws://0.0.0.0:5004");
+            Console.WriteLine("HTTP Server started on http://localhost:5005");
+            Console.WriteLine("OPEN http://localhost:5005 TO PLAY!");
 
             // Game Loop
             DateTime lastTick = DateTime.Now;
@@ -100,6 +116,83 @@ namespace Squawk.Server
 
                 Thread.Sleep(33); // ~30 FPS
             }
+        }
+
+        static void StartHttpServer(int port)
+        {
+            var listener = new HttpListener();
+            listener.Prefixes.Add($"http://*:{port}/");
+            try
+            {
+                listener.Start();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Could not start HTTP server on port {port}: {ex.Message}");
+                Console.WriteLine("Make sure to run as Administrator or use a different port.");
+                return;
+            }
+
+            Task.Run(() =>
+            {
+                while (listener.IsListening)
+                {
+                    try
+                    {
+                        var context = listener.GetContext();
+                        ProcessRequest(context);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"HTTP Request error: {ex.Message}");
+                    }
+                }
+            });
+        }
+
+        static void ProcessRequest(HttpListenerContext context)
+        {
+            string filename = context.Request.Url.AbsolutePath.Substring(1);
+            if (string.IsNullOrEmpty(filename)) filename = "index.html";
+
+            string filePath = Path.Combine(_clientPath, filename);
+
+            if (File.Exists(filePath))
+            {
+                try
+                {
+                    byte[] content = File.ReadAllBytes(filePath);
+                    context.Response.ContentType = GetContentType(filePath);
+                    context.Response.ContentLength64 = content.Length;
+                    context.Response.OutputStream.Write(content, 0, content.Length);
+                }
+                catch (Exception ex)
+                {
+                    context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                    Console.WriteLine($"Error serving {filename}: {ex.Message}");
+                }
+            }
+            else
+            {
+                context.Response.StatusCode = (int)HttpStatusCode.NotFound;
+                byte[] errorMsg = Encoding.UTF8.GetBytes("404 - Not Found");
+                context.Response.OutputStream.Write(errorMsg, 0, errorMsg.Length);
+            }
+            context.Response.OutputStream.Close();
+        }
+
+        static string GetContentType(string path)
+        {
+            string ext = Path.GetExtension(path).ToLower();
+            return ext switch
+            {
+                ".html" => "text/html",
+                ".js" => "application/javascript",
+                ".css" => "text/css",
+                ".png" => "image/png",
+                ".ico" => "image/x-icon",
+                _ => "application/octet-stream"
+            };
         }
     }
 }

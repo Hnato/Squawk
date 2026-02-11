@@ -1,0 +1,2 @@
+C:\Users\user\Music\Squawk\out\Server.pdb
+C:\Users\user\Music\Squawk\out\Server.exe

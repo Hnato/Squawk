@@ -20,8 +20,7 @@ namespace Squawk.Server.Models
     public class WelcomeMessage : BaseMessage
     {
         public string PlayerId { get; set; }
-        public float MapWidth { get; set; }
-        public float MapHeight { get; set; }
+        public float MapRadius { get; set; }
         public WelcomeMessage() => Type = MessageType.Welcome;
     }
 

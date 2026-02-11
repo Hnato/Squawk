@@ -7,10 +7,9 @@ namespace Squawk.Server
 {
     public class GameEngine
     {
-        public const float MapWidth = 3000f;
-        public const float MapHeight = 3000f;
-        public const int MaxFeathers = 200;
-        public const int BotCount = 10;
+        public const float MapRadius = 7500f; // 5x larger than before (was 3000 width, so radius 1500 * 5 = 7500)
+        public const int MaxFeathers = 1000; // Increased for larger map
+        public const int BotCount = 30; // More bots for larger map
 
         private Dictionary<string, Parrot> _parrots = new Dictionary<string, Parrot>();
         private List<FeatherEnergy> _feathers = new List<FeatherEnergy>();
@@ -20,6 +19,16 @@ namespace Squawk.Server
         {
             SpawnInitialFeathers();
             SpawnBots();
+        }
+
+        private Vector2 GetRandomMapPosition()
+        {
+            float angle = (float)(_random.NextDouble() * Math.PI * 2);
+            float dist = (float)(Math.Sqrt(_random.NextDouble()) * MapRadius);
+            return new Vector2(
+                (float)(Math.Cos(angle) * dist) + MapRadius,
+                (float)(Math.Sin(angle) * dist) + MapRadius
+            );
         }
 
         private void SpawnInitialFeathers()
@@ -41,7 +50,7 @@ namespace Squawk.Server
 
         public Parrot AddParrot(string id, string name, bool isBot = false)
         {
-            var pos = new Vector2((float)_random.NextDouble() * MapWidth, (float)_random.NextDouble() * MapHeight);
+            var pos = GetRandomMapPosition();
             Parrot parrot;
             if (isBot)
                 parrot = new BotParrot(id, name, pos);
@@ -81,7 +90,7 @@ namespace Squawk.Server
                         while (angleDiff > Math.PI) angleDiff -= (float)(2 * Math.PI);
                         while (angleDiff < -Math.PI) angleDiff += (float)(2 * Math.PI);
 
-                        float maxTurn = parrot.TurnRate * 0.016f; // approx 60fps
+                        float maxTurn = parrot.TurnRate * 0.033f; // 30 FPS tick
                         if (Math.Abs(angleDiff) > maxTurn)
                         {
                             parrot.Direction += Math.Sign(angleDiff) * maxTurn;
@@ -129,8 +138,9 @@ namespace Squawk.Server
                     // Update segments (follow leader)
                     UpdateSegments(parrot);
 
-                    // Map boundaries
-                    if (parrot.Position.X < 0 || parrot.Position.X > MapWidth || parrot.Position.Y < 0 || parrot.Position.Y > MapHeight)
+                    // Circular Map boundaries
+                    float distFromCenter = Vector2.Distance(parrot.Position, new Vector2(MapRadius, MapRadius));
+                    if (distFromCenter > MapRadius)
                     {
                         KillParrot(parrot);
                         continue;
@@ -169,7 +179,8 @@ namespace Squawk.Server
                 Vector2 prev = parrot.Segments[i - 1];
                 Vector2 curr = parrot.Segments[i];
                 float dist = Vector2.Distance(prev, curr);
-                float minDist = Parrot.SegmentDistance * parrot.Size;
+                // Reduce segment distance for overlapping look
+                float minDist = (Parrot.SegmentDistance * 0.4f) * parrot.Size;
 
                 if (dist > minDist)
                 {
@@ -181,7 +192,7 @@ namespace Squawk.Server
 
         private void CheckFeatherCollisions(Parrot parrot)
         {
-            float pickupRadius = 30f * parrot.Size;
+            float pickupRadius = 40f * parrot.Size;
             var caught = _feathers.Where(f => Vector2.Distance(parrot.Position, f.Position) < pickupRadius).ToList();
             foreach (var f in caught)
             {
@@ -198,9 +209,10 @@ namespace Squawk.Server
                 if (!other.IsAlive) continue;
 
                 // Check head of 'parrot' against all segments of 'other'
+                // Skip the first few segments to avoid immediate head-on weirdness if needed
                 for (int i = 0; i < other.Segments.Count; i++)
                 {
-                    float collisionDist = (15f * parrot.Size) + (15f * other.Size);
+                    float collisionDist = (18f * parrot.Size) + (18f * other.Size);
                     if (Vector2.Distance(parrot.Position, other.Segments[i]) < collisionDist)
                     {
                         KillParrot(parrot);
@@ -216,14 +228,8 @@ namespace Squawk.Server
             // Spawn death feathers
             foreach (var seg in parrot.Segments)
             {
-                SpawnFeather(FeatherType.DEATH_FEATHER, seg, 2.0f);
-            }
-            
-            // If it's a bot, respawn it after a delay or immediately
-            if (parrot.IsBot)
-            {
-                // We'll just remove and re-add in next cycle or something
-                // For now, just remove.
+                if (_random.NextDouble() < 0.5) // Don't spawn for every segment to avoid clutter
+                    SpawnFeather(FeatherType.DEATH_FEATHER, seg, 2.0f);
             }
         }
 
@@ -232,7 +238,7 @@ namespace Squawk.Server
             var feather = new FeatherEnergy
             {
                 Type = type,
-                Position = pos ?? new Vector2((float)_random.NextDouble() * MapWidth, (float)_random.NextDouble() * MapHeight),
+                Position = pos ?? GetRandomMapPosition(),
                 Value = value ?? (type == FeatherType.WORLD_FEATHER ? 1.0f : 0.5f)
             };
             _feathers.Add(feather);
@@ -241,21 +247,40 @@ namespace Squawk.Server
         private void UpdateBotAI(BotParrot bot, float deltaTime)
         {
             bot.StateTimer -= deltaTime;
+            
+            // 1. DANGER AVOIDANCE (Highest priority)
+            foreach (var other in _parrots.Values)
+            {
+                if (other.Id == bot.Id || !other.IsAlive) continue;
+                
+                // If head is close to any other parrot segment, steer away
+                foreach (var seg in other.Segments)
+                {
+                    float dist = Vector2.Distance(bot.Position, seg);
+                    if (dist < 150)
+                    {
+                        Vector2 away = bot.Position - seg;
+                        Vector2 evadePos = bot.Position + away.Normalized() * 200;
+                        UpdateInput(bot.Id, evadePos.X, evadePos.Y, bot.Energy > 50);
+                        return; // Done for this tick
+                    }
+                }
+            }
+
+            // 2. MAP BOUNDARY AVOIDANCE
+            float distFromCenter = Vector2.Distance(bot.Position, new Vector2(MapRadius, MapRadius));
+            if (distFromCenter > MapRadius * 0.8f)
+            {
+                UpdateInput(bot.Id, MapRadius, MapRadius, false);
+                return;
+            }
+
+            // 3. REGULAR BEHAVIOR
             if (bot.StateTimer <= 0)
             {
-                // Decision logic
-                // Scan nearby
-                var nearbyFeathers = _feathers.Where(f => Vector2.Distance(bot.Position, f.Position) < 500).ToList();
-                var nearbyParrots = _parrots.Values.Where(p => p.Id != bot.Id && p.IsAlive && Vector2.Distance(bot.Position, p.Position) < 500).ToList();
-
-                if (nearbyParrots.Any())
-                {
-                    var closest = nearbyParrots.OrderBy(p => Vector2.Distance(bot.Position, p.Position)).First();
-                    if (closest.Energy < bot.Energy) bot.State = BotState.ATTACK;
-                    else bot.State = BotState.EVADE;
-                    bot.TargetEntityId = closest.Id;
-                }
-                else if (nearbyFeathers.Any())
+                var nearbyFeathers = _feathers.Where(f => Vector2.Distance(bot.Position, f.Position) < 800).ToList();
+                
+                if (nearbyFeathers.Any())
                 {
                     bot.State = BotState.FEED;
                     bot.TargetPosition = nearbyFeathers.OrderBy(f => Vector2.Distance(bot.Position, f.Position)).First().Position;
@@ -263,36 +288,20 @@ namespace Squawk.Server
                 else
                 {
                     bot.State = BotState.WANDER;
-                    bot.TargetPosition = new Vector2((float)_random.NextDouble() * MapWidth, (float)_random.NextDouble() * MapHeight);
+                    // Wander towards center-ish
+                    float angle = (float)(_random.NextDouble() * Math.PI * 2);
+                    float dist = (float)(_random.NextDouble() * MapRadius * 0.5f);
+                    bot.TargetPosition = new Vector2(
+                        (float)(Math.Cos(angle) * dist) + MapRadius,
+                        (float)(Math.Sin(angle) * dist) + MapRadius
+                    );
                 }
-                bot.StateTimer = 1.0f + (float)_random.NextDouble() * 2.0f;
+                bot.StateTimer = 0.5f + (float)_random.NextDouble() * 1.0f;
             }
 
-            // Behavior in states
-            if (bot.State == BotState.WANDER || bot.State == BotState.FEED)
+            if (bot.TargetPosition.HasValue)
             {
-                if (bot.TargetPosition.HasValue)
-                {
-                    UpdateInput(bot.Id, bot.TargetPosition.Value.X, bot.TargetPosition.Value.Y, false);
-                }
-            }
-            else if (bot.State == BotState.ATTACK)
-            {
-                if (_parrots.TryGetValue(bot.TargetEntityId, out var target))
-                {
-                    // Try to cut off
-                    Vector2 targetFuture = target.Position + Vector2.FromAngle(target.Direction) * target.CurrentSpeed * 0.5f;
-                    UpdateInput(bot.Id, targetFuture.X, targetFuture.Y, true);
-                }
-            }
-            else if (bot.State == BotState.EVADE)
-            {
-                 if (_parrots.TryGetValue(bot.TargetEntityId, out var target))
-                {
-                    Vector2 away = bot.Position - target.Position;
-                    Vector2 targetPos = bot.Position + away.Normalized() * 100;
-                    UpdateInput(bot.Id, targetPos.X, targetPos.Y, true);
-                }
+                UpdateInput(bot.Id, bot.TargetPosition.Value.X, bot.TargetPosition.Value.Y, false);
             }
         }
 
