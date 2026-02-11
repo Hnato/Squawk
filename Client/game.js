@@ -53,6 +53,7 @@ function preload() {
 }
 
 function create() {
+    console.log('Phaser create() started');
     cam = this.cameras.main;
     cursors = this.input.keyboard.createCursorKeys();
     
@@ -68,6 +69,9 @@ function create() {
     const border = this.add.graphics();
     border.lineStyle(10, 0xffffff, 0.1);
     border.strokeCircle(mapRadius, mapRadius, mapRadius);
+
+    // V14: Store map graphics for dynamic updates
+    this.mapGraphics = { bg, grid, border };
 
     // Mini-map setup
     const miniMapSize = 350; 
@@ -99,6 +103,7 @@ function create() {
 }
 
 function connectToServer(name) {
+    console.log('Attempting to connect to server at ws://localhost:5004...');
     socket = new WebSocket('ws://localhost:5004');
 
     socket.onopen = () => {
@@ -106,10 +111,13 @@ function connectToServer(name) {
     };
 
     socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
+        try {
+            const data = JSON.parse(event.data);
+            // console.log('Message received:', data.Type); // Debug log
 
-        if (data.Type === 'welcome') {
-            playerId = data.PlayerId;
+            if (data.Type === 'welcome') {
+                playerId = data.PlayerId;
+                console.log('Welcome received, playerId:', playerId);
             // MapWidth in circular map is now used as Radius if provided
             if (data.MapRadius) {
                 mapRadius = data.MapRadius;
@@ -143,7 +151,10 @@ function connectToServer(name) {
         } else if (data.Type === 'leaderboard') {
             updateLeaderboard(data.Entries);
         }
-    };
+    } catch (err) {
+        console.error('Error parsing socket message:', err, event.data);
+    }
+};
 
     socket.onclose = () => {
         console.log('Rozłączono z serwerem');
@@ -152,10 +163,17 @@ function connectToServer(name) {
 }
 
 function handleGameUpdate(data) {
-    const scene = game.scene.scenes[0];
-    if (!scene) return;
+    try {
+        const scene = game.scene.scenes[0];
+        if (!scene) return;
 
-    // Update players
+        // V14: Data validation
+        if (!data || !data.Parrots || !data.Feathers) {
+            console.warn('Incomplete data received from server');
+            return;
+        }
+
+        // Update players
     const currentIds = data.Parrots.map(p => p.Id);
     
     // Remove disconnected
@@ -228,7 +246,7 @@ function handleGameUpdate(data) {
             });
         }
         
-        const size = p.currentVisualSize;
+        const size = p.currentVisualSize || 1;
         const headHeight = 24 * size;
         
         // V12: Optimization - LOD (Level of Detail)
@@ -287,7 +305,7 @@ function handleGameUpdate(data) {
         }
 
         // V12: Optimization - Culling (Don't update if far off screen)
-        const isVisible = cam.worldView.contains(pData.X, pData.Y) || distToPlayer < 1000;
+        const isVisible = (cam.worldView && cam.worldView.contains(pData.X, pData.Y)) || distToPlayer < 1000;
         
         if (isVisible) {
             p.nameText.setVisible(true);
@@ -430,8 +448,8 @@ function handleGameUpdate(data) {
                     scene.miniMapDots.lineStyle(1, 0xffffff, 0.5);
                     scene.miniMapDots.lineBetween(
                         dotX, dotY, 
-                        dotX + Math.cos(pData.Direction) * 8, 
-                        dotY + Math.sin(pData.Direction) * 8
+                        dotX + Math.cos(pData.Dir) * 8, 
+                        dotY + Math.sin(pData.Dir) * 8
                     );
                 }
             }
@@ -478,6 +496,9 @@ function handleGameUpdate(data) {
             });
         }
     });
+    } catch (err) {
+        console.error('CRITICAL: Error in handleGameUpdate:', err);
+    }
 }
 
 function updateLeaderboard(entries) {

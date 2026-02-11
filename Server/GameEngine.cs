@@ -353,6 +353,7 @@ namespace Squawk.Server
                         Y = p.Position.Y,
                         Dir = p.Direction,
                         Energy = p.Energy,
+                        Size = p.Size,
                         Segments = p.Segments.ToList(),
                         IsBoosting = p.IsBoosting
                     }).ToList(),

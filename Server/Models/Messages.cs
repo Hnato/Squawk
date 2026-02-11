@@ -53,6 +53,7 @@ namespace Squawk.Server.Models
         public float Y { get; set; }
         public float Dir { get; set; }
         public float Energy { get; set; }
+        public float Size { get; set; }
         public List<Vector2> Segments { get; set; }
         public bool IsBoosting { get; set; }
     }
