@@ -1,0 +1,54 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:fluent="clr-namespace:Avalonia.Themes.Fluent;assembly=Avalonia.Themes.Fluent"
+             x:Class="Squawk.AvaloniaPanel.App">
+  <Application.Styles>
+    <fluent:FluentTheme />
+    <Style Selector="Border.button-frame">
+      <Setter Property="Background" Value="{StaticResource BrushWood}" />
+      <Setter Property="BorderBrush" Value="{StaticResource BrushWoodLight}" />
+      <Setter Property="BorderThickness" Value="3" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="4" />
+    </Style>
+
+    <Style Selector="Border.button-inner">
+      <Setter Property="Background" Value="#6A3A12" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="12,8" />
+    </Style>
+
+    <Style Selector="TextBlock.button-label">
+      <Setter Property="Foreground" Value="{StaticResource BrushWhite}" />
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <Style Selector="TextBlock.console-line">
+      <Setter Property="FontFamily" Value="Consolas" />
+      <Setter Property="Foreground" Value="{StaticResource BrushGreenText}" />
+      <Setter Property="FontSize" Value="14" />
+    </Style>
+  </Application.Styles>
+
+  <Application.Resources>
+    <Color x:Key="ColorDarkGreen">#18281A</Color>
+    <Color x:Key="ColorWood">#8C5A26</Color>
+    <Color x:Key="ColorWoodLight">#C98C3A</Color>
+    <Color x:Key="ColorConsoleHeader">#3B5E1A</Color>
+    <Color x:Key="ColorConsoleBack">#101010</Color>
+    <Color x:Key="ColorTitle">#F6C565</Color>
+    <Color x:Key="ColorGreenText">#9CF062</Color>
+    <Color x:Key="ColorWarning">#FFC94A</Color>
+
+    <SolidColorBrush x:Key="BrushBackground" Color="{StaticResource ColorDarkGreen}" />
+    <SolidColorBrush x:Key="BrushTitle" Color="{StaticResource ColorTitle}" />
+    <SolidColorBrush x:Key="BrushConsoleHeader" Color="{StaticResource ColorConsoleHeader}" />
+    <SolidColorBrush x:Key="BrushConsoleBack" Color="{StaticResource ColorConsoleBack}" />
+    <SolidColorBrush x:Key="BrushWood" Color="{StaticResource ColorWood}" />
+    <SolidColorBrush x:Key="BrushWoodLight" Color="{StaticResource ColorWoodLight}" />
+    <SolidColorBrush x:Key="BrushGreenText" Color="{StaticResource ColorGreenText}" />
+    <SolidColorBrush x:Key="BrushWarning" Color="{StaticResource ColorWarning}" />
+    <SolidColorBrush x:Key="BrushWhite" Color="#FFFFFF" />
+  </Application.Resources>
+</Application>

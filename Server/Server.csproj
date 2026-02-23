@@ -5,22 +5,24 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <AssemblyName>Squawk</AssemblyName>
+    <AssemblyName>SquawkServer</AssemblyName>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <PublishTrimmed>false</PublishTrimmed>
-    <PublishDir>$(MSBuildProjectDirectory)\..\server\</PublishDir>
+    <PublishDir>$(MSBuildProjectDirectory)\..\</PublishDir>
     <ApplicationIcon>..\Client\logo.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <UseWindowsForms>true</UseWindowsForms>
+    <Company>Hnato.</Company>
+    <Authors>Hnato.</Authors>
+    <Product>SquawkServer</Product>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Fleck" Version="1.2.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2420.47" />
   </ItemGroup>
 
   <ItemGroup>

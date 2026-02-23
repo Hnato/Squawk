@@ -16,7 +16,6 @@
     <Import Project="$(NuGetPackageRoot)microsoft.net.illink.tasks\10.0.1\build\Microsoft.NET.ILLink.Tasks.props" Condition="Exists('$(NuGetPackageRoot)microsoft.net.illink.tasks\10.0.1\build\Microsoft.NET.ILLink.Tasks.props')" />
   </ImportGroup>
   <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
-    <PkgMicrosoft_Web_WebView2 Condition=" '$(PkgMicrosoft_Web_WebView2)' == '' ">C:\Users\user\.nuget\packages\microsoft.web.webview2\1.0.2420.47</PkgMicrosoft_Web_WebView2>
     <PkgMicrosoft_NET_ILLink_Tasks Condition=" '$(PkgMicrosoft_NET_ILLink_Tasks)' == '' ">C:\Users\user\.nuget\packages\microsoft.net.illink.tasks\10.0.1</PkgMicrosoft_NET_ILLink_Tasks>
   </PropertyGroup>
 </Project>

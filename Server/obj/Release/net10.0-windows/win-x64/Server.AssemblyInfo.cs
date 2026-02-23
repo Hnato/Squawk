@@ -10,12 +10,12 @@
 using System;
 using System.Reflection;
 
-[assembly: System.Reflection.AssemblyCompanyAttribute("Squawk")]
+[assembly: System.Reflection.AssemblyCompanyAttribute("Hnato.")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
 [assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
-[assembly: System.Reflection.AssemblyProductAttribute("Squawk")]
-[assembly: System.Reflection.AssemblyTitleAttribute("Squawk")]
+[assembly: System.Reflection.AssemblyProductAttribute("SquawkServer")]
+[assembly: System.Reflection.AssemblyTitleAttribute("SquawkServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
 [assembly: System.Runtime.Versioning.TargetPlatformAttribute("Windows7.0")]
 [assembly: System.Runtime.Versioning.SupportedOSPlatformAttribute("Windows7.0")]

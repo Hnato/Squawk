@@ -8,7 +8,7 @@
       "version": "1.0.0",
       "restore": {
         "projectUniqueName": "C:\\Users\\user\\Music\\Squawk\\Server\\Server.csproj",
-        "projectName": "Squawk",
+        "projectName": "SquawkServer",
         "projectPath": "C:\\Users\\user\\Music\\Squawk\\Server\\Server.csproj",
         "packagesPath": "C:\\Users\\user\\.nuget\\packages\\",
         "outputPath": "C:\\Users\\user\\Music\\Squawk\\Server\\obj\\",
@@ -53,10 +53,6 @@
               "target": "Package",
               "version": "[10.0.1, )",
               "autoReferenced": true
-            },
-            "Microsoft.Web.WebView2": {
-              "target": "Package",
-              "version": "[1.0.2420.47, )"
             },
             "Newtonsoft.Json": {
               "target": "Package",

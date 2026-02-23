@@ -1,0 +1,147 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="https://github.com/avaloniaui"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Squawk.AvaloniaPanel"
+        x:Class="Squawk.AvaloniaPanel.MainWindow"
+        Width="1024"
+        Height="680"
+        Background="{StaticResource BrushBackground}"
+        Foreground="{StaticResource BrushWhite}"
+        mc:Ignorable="d"
+        Title="SquawkServer">
+  <Grid RowDefinitions="Auto,Auto,Auto,*"
+        Margin="40">
+
+    <Border Grid.Row="0"
+            HorizontalAlignment="Center"
+            Margin="0,0,0,30">
+      <TextBlock Text="SquawkServer"
+                 FontSize="48"
+                 FontWeight="Bold"
+                 Foreground="{StaticResource BrushTitle}"
+                 FontFamily="Segoe UI" />
+    </Border>
+
+    <Grid Grid.Row="1"
+          ColumnDefinitions="*,*,*"
+          HorizontalAlignment="Center"
+          Margin="0,0,0,30"
+          Width="650">
+
+      <Border Grid.Column="0"
+              Classes="button-frame"
+              Margin="0,0,20,0">
+        <Border Classes="button-inner">
+          <Grid ColumnDefinitions="Auto,*"
+                VerticalAlignment="Center">
+            <Border Width="36"
+                    Height="36"
+                    CornerRadius="18"
+                    Background="#FF6A1A"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Margin="0,0,8,0">
+              <TextBlock Text="🔥"
+                         FontSize="22"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center" />
+            </Border>
+            <TextBlock Grid.Column="1"
+                       Classes="button-label"
+                       Text="Włącz Silnik Gry" />
+          </Grid>
+        </Border>
+      </Border>
+
+      <Border Grid.Column="1"
+              Classes="button-frame"
+              Margin="10,0"
+              HorizontalAlignment="Center">
+        <Border Classes="button-inner">
+          <Grid ColumnDefinitions="Auto,*"
+                VerticalAlignment="Center">
+            <Border Width="36"
+                    Height="36"
+                    CornerRadius="8"
+                    Background="#E5BE55"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Margin="0,0,8,0">
+              <TextBlock Text="🏠"
+                         FontSize="20"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center" />
+            </Border>
+            <TextBlock Grid.Column="1"
+                       Classes="button-label"
+                       Text="Włącz Strona" />
+          </Grid>
+        </Border>
+      </Border>
+
+      <Border Grid.Column="2"
+              Classes="button-frame"
+              Margin="20,0,0,0">
+        <Border Classes="button-inner">
+          <Grid ColumnDefinitions="Auto,*"
+                VerticalAlignment="Center">
+            <Border Width="36"
+                    Height="36"
+                    CornerRadius="18"
+                    Background="#B0B0B0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    Margin="0,0,8,0">
+              <TextBlock Text="☠"
+                         FontSize="22"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center" />
+            </Border>
+            <TextBlock Grid.Column="1"
+                       Classes="button-label"
+                       Text="Włącz Boty" />
+          </Grid>
+        </Border>
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="2"
+            Background="{StaticResource BrushConsoleHeader}"
+            CornerRadius="6"
+            Padding="16,8"
+            Margin="0,0,0,8"
+            HorizontalAlignment="Left">
+      <TextBlock Text="Console Output:"
+                 FontFamily="Segoe UI"
+                 FontSize="18"
+                 FontWeight="Bold"
+                 Foreground="{StaticResource BrushWhite}" />
+    </Border>
+
+    <Border Grid.Row="3"
+            Background="#3B2C20"
+            BorderBrush="#715031"
+            BorderThickness="6"
+            CornerRadius="8">
+      <Border Background="{StaticResource BrushConsoleBack}"
+              CornerRadius="4"
+              Margin="6">
+        <ScrollViewer Margin="16"
+                      VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <TextBlock Classes="console-line"
+                       Text="[INFO] Server Started..." />
+            <TextBlock Classes="console-line"
+                       Text="[INFO] Listening on Port 8080..." />
+            <TextBlock Classes="console-line"
+                       Foreground="{StaticResource BrushWarning}"
+                       Text="[WARNING] Bot Error Detected!" />
+            <TextBlock Classes="console-line"
+                       Text="[INFO] Game Engine Initialized!" />
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Border>
+  </Grid>
+</Window>

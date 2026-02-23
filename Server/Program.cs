@@ -15,10 +15,24 @@ namespace Squawk.Server
     class Program
     {
         private const int Port = 5004;
-        private const int HttpPort = 5005;
+        private const int HttpPort = 5006;
         private const string Host = "0.0.0.0";
         private static readonly GameEngine _engine = new GameEngine();
         private static readonly Dictionary<IWebSocketConnection, string> _clients = new Dictionary<IWebSocketConnection, string>();
+        private static WebSocketServer? _server;
+        private static bool _serverRunning;
+        private static bool _gameRunning;
+        private static bool _networkRunning;
+        private static bool _botsEnabled;
+        private static Thread? _gameThread;
+        private static TcpListener? _http;
+        private static Thread? _httpThread;
+        public static event Action<bool>? GameStateChanged;
+        public static event Action<bool>? NetworkStateChanged;
+        public static event Action<bool>? BotsStateChanged;
+        public static bool IsGameRunning => _gameRunning;
+        public static bool IsNetworkRunning => _networkRunning;
+        public static bool AreBotsEnabled => _botsEnabled;
 
         [STAThread]
         static void Main(string[] args)
@@ -42,89 +56,13 @@ namespace Squawk.Server
                 Log.Info("       SQUAWK SERVER INITIALIZING       ");
                 Log.Info("========================================");
 
-                var httpThread = new Thread(StartHttpServer)
-                {
-                    IsBackground = true
-                };
-                httpThread.Start();
-
-                var server = new WebSocketServer($"ws://{Host}:{Port}");
-                server.Start(socket =>
-                {
-                    socket.OnOpen = () =>
-                    {
-                        string playerId = Guid.NewGuid().ToString();
-                        _clients[socket] = playerId;
-                        var welcome = new WelcomeMessage 
-                        { 
-                            PlayerId = playerId,
-                            MapRadius = GameEngine.MapRadius
-                        };
-                        socket.Send(JsonConvert.SerializeObject(welcome));
-                            Log.Info($"[{DateTime.Now:HH:mm:ss}] Client connected: {playerId}");
-                    };
-
-                    socket.OnClose = () =>
-                    {
-                        if (_clients.TryGetValue(socket, out string? playerId) && playerId != null)
-                        {
-                            _engine.RemoveParrot(playerId);
-                            _clients.Remove(socket);
-                            Log.Info($"[{DateTime.Now:HH:mm:ss}] Client disconnected: {playerId}");
-                        }
-                    };
-
-                    socket.OnMessage = message =>
-                    {
-                        try
-                        {
-                            var baseMsg = JsonConvert.DeserializeObject<BaseMessage>(message);
-                            string? currentPlayerId;
-                            if (baseMsg != null && _clients.TryGetValue(socket, out currentPlayerId) && currentPlayerId != null)
-                            {
-                                switch (baseMsg.Type)
-                                {
-                                    case MessageType.Join:
-                                        var joinMsg = JsonConvert.DeserializeObject<JoinMessage>(message);
-                                        if (joinMsg != null && joinMsg.Name != null)
-                                        {
-                                            _engine.AddParrot(currentPlayerId, joinMsg.Name);
-                                        }
-                                        break;
-                                    case MessageType.Input:
-                                        var inputMsg = JsonConvert.DeserializeObject<InputMessage>(message);
-                                        if (inputMsg != null)
-                                        {
-                                            _engine.UpdateInput(currentPlayerId, inputMsg.TargetX, inputMsg.TargetY, inputMsg.IsBoosting);
-                                        }
-                                        break;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Error($"[{DateTime.Now:HH:mm:ss}] Error processing message: {ex.Message}");
-                        }
-                    };
-                });
-
-                Thread.Sleep(500);
-                SocketValidator.ValidateOnlyTargetPort(Port);
-
-                Log.Info($"\n[{DateTime.Now:HH:mm:ss}] WebSocket Server ACTIVE on:");
-                Log.Info($" -> ws://{Host}:{Port}");
-                Log.Info($" -> ws://localhost:{Port}");
-                Log.Info("HTTP server available on:");
-                Log.Info($" -> http://localhost:{HttpPort}/");
-                Log.Info("========================================");
-
-                Task.Run(GameLoop);
+                _botsEnabled = true;
 
                 if (Environment.UserInteractive)
                 {
                     Application.EnableVisualStyles();
                     Application.SetCompatibleTextRenderingDefault(false);
-                    Application.Run(new MainForm($"http://localhost:{HttpPort}/"));
+                    Application.Run(new MainForm());
                 }
                 else
                 {
@@ -149,11 +87,162 @@ namespace Squawk.Server
             }
         }
 
+        public static void StartServer()
+        {
+            if (_serverRunning) return;
+            var server = new WebSocketServer($"ws://{Host}:{Port}");
+            _server = server;
+            _serverRunning = true;
+            server.Start(socket =>
+            {
+                socket.OnOpen = () =>
+                {
+                    string playerId = Guid.NewGuid().ToString();
+                    _clients[socket] = playerId;
+                    var welcome = new WelcomeMessage
+                    {
+                        PlayerId = playerId,
+                        MapRadius = GameEngine.MapRadius
+                    };
+                    socket.Send(JsonConvert.SerializeObject(welcome));
+                    Log.Info($"[{DateTime.Now:HH:mm:ss}] Client connected: {playerId}");
+                };
+
+                socket.OnClose = () =>
+                {
+                    if (_clients.TryGetValue(socket, out string? playerId) && playerId != null)
+                    {
+                        _engine.RemoveParrot(playerId);
+                        _clients.Remove(socket);
+                        Log.Info($"[{DateTime.Now:HH:mm:ss}] Client disconnected: {playerId}");
+                    }
+                };
+
+                socket.OnMessage = message =>
+                {
+                    try
+                    {
+                        var baseMsg = JsonConvert.DeserializeObject<BaseMessage>(message);
+                        string? currentPlayerId;
+                        if (baseMsg != null && _clients.TryGetValue(socket, out currentPlayerId) && currentPlayerId != null)
+                        {
+                            switch (baseMsg.Type)
+                            {
+                                case MessageType.Join:
+                                    var joinMsg = JsonConvert.DeserializeObject<JoinMessage>(message);
+                                    if (joinMsg != null && joinMsg.Name != null)
+                                    {
+                                        _engine.AddParrot(currentPlayerId, joinMsg.Name);
+                                    }
+                                    break;
+                                case MessageType.Input:
+                                    var inputMsg = JsonConvert.DeserializeObject<InputMessage>(message);
+                                    if (inputMsg != null)
+                                    {
+                                        _engine.UpdateInput(currentPlayerId, inputMsg.TargetX, inputMsg.TargetY, inputMsg.IsBoosting);
+                                    }
+                                    break;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error($"[{DateTime.Now:HH:mm:ss}] Error processing message: {ex.Message}");
+                    }
+                };
+            });
+
+            Thread.Sleep(500);
+            SocketValidator.ValidateOnlyTargetPort(Port);
+
+            Log.Info($"\n[{DateTime.Now:HH:mm:ss}] WebSocket Server ACTIVE on:");
+            Log.Info($" -> ws://{Host}:{Port}");
+            Log.Info($" -> ws://localhost:{Port}");
+            Log.Info("========================================");
+        }
+
+        public static void StopServer()
+        {
+            if (!_serverRunning) return;
+            _serverRunning = false;
+            foreach (var client in _clients.Keys.ToList())
+            {
+                try
+                {
+                    client.Close();
+                }
+                catch
+                {
+                }
+            }
+            _clients.Clear();
+            if (_server != null)
+            {
+                _server.Dispose();
+                _server = null;
+            }
+            Log.Info($"[{DateTime.Now:HH:mm:ss}] WebSocket Server stopped");
+        }
+
+        public static void StartGame()
+        {
+            if (_gameRunning) return;
+            _gameRunning = true;
+            _gameThread = new Thread(GameLoop);
+            _gameThread.IsBackground = true;
+            _gameThread.Start();
+            Log.Info($"[{DateTime.Now:HH:mm:ss}] Game loop started");
+            try { GameStateChanged?.Invoke(true); } catch { }
+        }
+
+        public static void StopGame()
+        {
+            if (!_gameRunning) return;
+            _gameRunning = false;
+            Log.Info($"[{DateTime.Now:HH:mm:ss}] Game loop stopping");
+            try { GameStateChanged?.Invoke(false); } catch { }
+        }
+
+        public static void StartNetwork()
+        {
+            if (_networkRunning) return;
+            try
+            {
+                StartServer();
+                StartHttpInternal();
+                _networkRunning = true;
+                try { NetworkStateChanged?.Invoke(true); } catch { }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Network start error: {ex.Message}");
+                try { NetworkStateChanged?.Invoke(false); } catch { }
+            }
+        }
+
+        public static void StopNetwork()
+        {
+            if (!_networkRunning) return;
+            StopServer();
+            StopHttpInternal();
+            _networkRunning = false;
+            try { NetworkStateChanged?.Invoke(false); } catch { }
+        }
+
+        public static void SetBotsEnabled(bool enabled)
+        {
+            _engine.SetBotsEnabled(enabled);
+            _botsEnabled = enabled;
+            if (enabled) Log.Info($"[{DateTime.Now:HH:mm:ss}] Bots enabled");
+            else Log.Info($"[{DateTime.Now:HH:mm:ss}] Bots disabled");
+            try { BotsStateChanged?.Invoke(enabled); } catch { }
+        }
+
         private static void GameLoop()
         {
             DateTime lastTick = DateTime.Now;
             int frameCount = 0;
-            while (true)
+            while (_gameRunning)
             {
                 DateTime now = DateTime.Now;
                 float deltaTime = (float)(now - lastTick).TotalSeconds;
@@ -217,24 +306,56 @@ namespace Squawk.Server
             }
         }
 
-        private static void StartHttpServer()
+        private static void StartHttpInternal()
+        {
+            if (_http != null) return;
+            _http = new TcpListener(IPAddress.Any, HttpPort);
+            _http.Start();
+            Log.Info($"\n[{DateTime.Now:HH:mm:ss}] HTTP server ACTIVE on:");
+            Log.Info($" -> http://0.0.0.0:{HttpPort}/");
+            Log.Info($" -> http://localhost:{HttpPort}/");
+            _httpThread = new Thread(HttpAcceptLoop);
+            _httpThread.IsBackground = true;
+            _httpThread.Start();
+        }
+
+        private static void StopHttpInternal()
         {
             try
             {
-                var tcp = new TcpListener(IPAddress.Loopback, HttpPort);
-                tcp.Start();
-                Log.Info($"\n[{DateTime.Now:HH:mm:ss}] HTTP server ACTIVE on:");
-                Log.Info($" -> http://localhost:{HttpPort}/");
-                Log.Info($" -> http://127.0.0.1:{HttpPort}/");
-                while (true)
+                _http?.Stop();
+            }
+            catch
+            {
+            }
+            _http = null;
+            try
+            {
+                if (_httpThread != null && _httpThread.IsAlive)
                 {
-                    var client = tcp.AcceptTcpClient();
-                    _ = Task.Run(() => HandleTcpClient(client));
+                    _httpThread.Join(200);
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Log.Error($"CRITICAL ERROR: Could not start HTTP server: {ex.Message}");
+            }
+            _httpThread = null;
+            Log.Info($"[{DateTime.Now:HH:mm:ss}] HTTP server stopped");
+        }
+
+        private static void HttpAcceptLoop()
+        {
+            while (_http != null)
+            {
+                try
+                {
+                    var client = _http.AcceptTcpClient();
+                    _ = Task.Run(() => HandleTcpClient(client));
+                }
+                catch
+                {
+                    break;
+                }
             }
         }
 
@@ -246,23 +367,18 @@ namespace Squawk.Server
                 using var reader = new StreamReader(stream, leaveOpen: true);
                 using var writer = new StreamWriter(stream, leaveOpen: true);
                 writer.AutoFlush = true;
-
                 string? requestLine = reader.ReadLine();
                 if (string.IsNullOrWhiteSpace(requestLine))
                 {
                     client.Close();
                     return;
                 }
-
                 var parts = requestLine.Split(' ');
                 string path = parts.Length >= 2 ? parts[1] : "/";
                 if (path == "/") path = "/index.html";
                 path = path.TrimStart('/');
-
-                // consume headers
                 string? line;
                 while (!string.IsNullOrEmpty(line = reader.ReadLine())) { }
-
                 var bytes = ReadEmbeddedClientResource(path);
                 if (bytes == null)
                 {
@@ -272,7 +388,6 @@ namespace Squawk.Server
                     client.Close();
                     return;
                 }
-
                 var extension = Path.GetExtension(path).ToLowerInvariant();
                 var contentType = extension switch
                 {
@@ -286,7 +401,6 @@ namespace Squawk.Server
                     ".ico" => "image/x-icon",
                     _ => "application/octet-stream"
                 };
-
                 var header = $"HTTP/1.1 200 OK\r\nContent-Type: {contentType}\r\nContent-Length: {bytes.Length}\r\nConnection: close\r\n\r\n";
                 var headerBytes2 = System.Text.Encoding.ASCII.GetBytes(header);
                 stream.Write(headerBytes2, 0, headerBytes2.Length);
@@ -296,24 +410,14 @@ namespace Squawk.Server
             }
             catch
             {
-                try
-                {
-                    client.Close();
-                }
-                catch
-                {
-                }
+                try { client.Close(); } catch { }
             }
         }
 
         private static byte[]? ReadEmbeddedClientResource(string requestPath)
         {
             var relativePath = requestPath.TrimStart('/');
-            if (string.IsNullOrWhiteSpace(relativePath))
-            {
-                relativePath = "index.html";
-            }
-
+            if (string.IsNullOrWhiteSpace(relativePath)) relativePath = "index.html";
             var assembly = Assembly.GetExecutingAssembly();
             var normalizedWanted = ("Client/" + relativePath.Replace('\\', '/')).Replace('/', '.');
             Stream? stream = null;
@@ -337,26 +441,9 @@ namespace Squawk.Server
                 }
             }
             if (stream == null) return null;
-
             using var ms = new MemoryStream();
             stream.CopyTo(ms);
             return ms.ToArray();
-        }
-
-        private static void OpenBrowser(string url)
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = url,
-                    UseShellExecute = true
-                });
-            }
-            catch (Exception ex)
-            {
-                Log.Error($"Could not open browser automatically: {ex.Message}");
-            }
         }
 
         private static void WaitForExit()
@@ -417,14 +504,26 @@ namespace Squawk.Server
         internal static class Log
         {
             private static readonly string PathLog = System.IO.Path.Combine(AppContext.BaseDirectory, "Squawk.log");
+            public static event Action<string>? MessageLogged;
             private static void Write(string level, string msg)
             {
                 var line = $"[{DateTime.Now:O}] {level} {msg}{Environment.NewLine}";
                 try { File.AppendAllText(PathLog, line); } catch { }
                 SafeConsole.TryWriteLine(msg);
+                try
+                {
+                    MessageLogged?.Invoke(line);
+                }
+                catch
+                {
+                }
             }
             public static void Info(string msg) => Write("INFO", msg);
             public static void Error(string msg) => Write("ERROR", msg);
+            public static void Subscribe(Action<string> handler)
+            {
+                MessageLogged += handler;
+            }
         }
     }
 }

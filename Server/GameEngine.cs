@@ -14,6 +14,7 @@ namespace Squawk.Server
         private Dictionary<string, Parrot> _parrots = new Dictionary<string, Parrot>();
         private List<FeatherEnergy> _feathers = new List<FeatherEnergy>();
         private Random _random = new Random();
+        private bool _botsEnabled = true;
 
         public GameEngine()
         {
@@ -123,10 +124,12 @@ namespace Squawk.Server
         {
             lock (_parrots)
             {
-                // Update Bots AI
-                foreach (var parrot in _parrots.Values.OfType<BotParrot>())
+                if (_botsEnabled)
                 {
-                    UpdateBotAI(parrot, deltaTime);
+                    foreach (var parrot in _parrots.Values.OfType<BotParrot>())
+                    {
+                        UpdateBotAI(parrot, deltaTime);
+                    }
                 }
 
                 // Update Movement
@@ -392,7 +395,31 @@ namespace Squawk.Server
                 foreach (var bot in deadBots)
                 {
                     _parrots.Remove(bot.Id);
-                    AddParrot("bot_" + Guid.NewGuid().ToString().Substring(0, 8), bot.Name, true);
+                    if (_botsEnabled)
+                    {
+                        AddParrot("bot_" + Guid.NewGuid().ToString().Substring(0, 8), bot.Name, true);
+                    }
+                }
+            }
+        }
+
+        public void SetBotsEnabled(bool enabled)
+        {
+            lock (_parrots)
+            {
+                if (_botsEnabled == enabled) return;
+                _botsEnabled = enabled;
+                if (!_botsEnabled)
+                {
+                    var bots = _parrots.Values.Where(p => p.IsBot).Select(p => p.Id).ToList();
+                    foreach (var id in bots)
+                    {
+                        _parrots.Remove(id);
+                    }
+                }
+                else
+                {
+                    SpawnBots();
                 }
             }
         }

@@ -1,0 +1,53 @@
+{
+  "version": 2,
+  "dgSpecHash": "RXPcePyiq/s=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\user\\Music\\Squawk\\AvaloniaPanel\\Squawk.AvaloniaPanel.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\user\\.nuget\\packages\\avalonia\\11.0.0\\avalonia.11.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\avalonia.angle.windows.natives\\2.1.0.2023020321\\avalonia.angle.windows.natives.2.1.0.2023020321.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\avalonia.buildservices\\0.0.28\\avalonia.buildservices.0.0.28.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\avalonia.desktop\\11.0.0\\avalonia.desktop.11.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\avalonia.freedesktop\\11.0.0\\avalonia.freedesktop.11.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\avalonia.native\\11.0.0\\avalonia.native.11.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\avalonia.reactiveui\\11.0.0\\avalonia.reactiveui.11.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\avalonia.remote.protocol\\11.0.0\\avalonia.remote.protocol.11.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\avalonia.skia\\11.0.0\\avalonia.skia.11.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\avalonia.themes.fluent\\11.0.0\\avalonia.themes.fluent.11.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\avalonia.win32\\11.0.0\\avalonia.win32.11.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\avalonia.x11\\11.0.0\\avalonia.x11.11.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\dynamicdata\\7.9.5\\dynamicdata.7.9.5.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\harfbuzzsharp\\2.8.2.3\\harfbuzzsharp.2.8.2.3.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\harfbuzzsharp.nativeassets.linux\\2.8.2.3\\harfbuzzsharp.nativeassets.linux.2.8.2.3.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\harfbuzzsharp.nativeassets.macos\\2.8.2.3\\harfbuzzsharp.nativeassets.macos.2.8.2.3.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\harfbuzzsharp.nativeassets.webassembly\\2.8.2.3\\harfbuzzsharp.nativeassets.webassembly.2.8.2.3.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\harfbuzzsharp.nativeassets.win32\\2.8.2.3\\harfbuzzsharp.nativeassets.win32.2.8.2.3.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\microcom.runtime\\0.11.0\\microcom.runtime.0.11.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.win32.systemevents\\6.0.0\\microsoft.win32.systemevents.6.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\reactiveui\\18.3.1\\reactiveui.18.3.1.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\skiasharp\\2.88.3\\skiasharp.2.88.3.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\skiasharp.nativeassets.linux\\2.88.3\\skiasharp.nativeassets.linux.2.88.3.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\skiasharp.nativeassets.macos\\2.88.3\\skiasharp.nativeassets.macos.2.88.3.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\skiasharp.nativeassets.webassembly\\2.88.3\\skiasharp.nativeassets.webassembly.2.88.3.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\skiasharp.nativeassets.win32\\2.88.3\\skiasharp.nativeassets.win32.2.88.3.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\splat\\14.4.1\\splat.14.4.1.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\system.componentmodel.annotations\\4.5.0\\system.componentmodel.annotations.4.5.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\system.drawing.common\\6.0.0\\system.drawing.common.6.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\system.reactive\\5.0.0\\system.reactive.5.0.0.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\tmds.dbus.protocol\\0.15.0\\tmds.dbus.protocol.0.15.0.nupkg.sha512"
+  ],
+  "logs": [
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "message": "Pakiet „SkiaSharp” 2.88.3 ma znane wysoka luki w zabezpieczeniach o ważności, https://github.com/advisories/GHSA-j7hp-h8jx-5ppr",
+      "projectPath": "C:\\Users\\user\\Music\\Squawk\\AvaloniaPanel\\Squawk.AvaloniaPanel.csproj",
+      "warningLevel": 1,
+      "filePath": "C:\\Users\\user\\Music\\Squawk\\AvaloniaPanel\\Squawk.AvaloniaPanel.csproj",
+      "libraryId": "SkiaSharp",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    }
+  ]
+}

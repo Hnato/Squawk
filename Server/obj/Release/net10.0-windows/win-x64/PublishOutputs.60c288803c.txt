@@ -1,2 +1,2 @@
-C:\Users\user\Music\Squawk\server\Squawk.pdb
-C:\Users\user\Music\Squawk\server\Squawk.exe
+C:\Users\user\Music\Squawk\server\SquawkServer.pdb
+C:\Users\user\Music\Squawk\server\SquawkServer.exe

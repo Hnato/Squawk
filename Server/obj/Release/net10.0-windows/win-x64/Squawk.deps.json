@@ -10,7 +10,6 @@
       "Squawk/1.0.0": {
         "dependencies": {
           "Fleck": "1.2.0",
-          "Microsoft.Web.WebView2": "1.0.2420.47",
           "Newtonsoft.Json": "13.0.4",
           "runtimepack.Microsoft.NETCore.App.Runtime.win-x64": "10.0.1",
           "runtimepack.Microsoft.WindowsDesktop.App.Runtime.win-x64": "10.0.1"
@@ -831,27 +830,6 @@
           }
         }
       },
-      "Microsoft.Web.WebView2/1.0.2420.47": {
-        "runtime": {
-          "lib/netcoreapp3.0/Microsoft.Web.WebView2.Core.dll": {
-            "assemblyVersion": "1.0.2420.47",
-            "fileVersion": "1.0.2420.47"
-          },
-          "lib/netcoreapp3.0/Microsoft.Web.WebView2.WinForms.dll": {
-            "assemblyVersion": "1.0.2420.47",
-            "fileVersion": "1.0.2420.47"
-          },
-          "lib/netcoreapp3.0/Microsoft.Web.WebView2.Wpf.dll": {
-            "assemblyVersion": "1.0.2420.47",
-            "fileVersion": "1.0.2420.47"
-          }
-        },
-        "native": {
-          "runtimes/win-x64/native/WebView2Loader.dll": {
-            "fileVersion": "1.0.2420.47"
-          }
-        }
-      },
       "Newtonsoft.Json/13.0.4": {
         "runtime": {
           "lib/net6.0/Newtonsoft.Json.dll": {
@@ -884,13 +862,6 @@
       "sha512": "sha512-bPLXn6QbLAFoviur6XbrKB0Zn6x04E8VibHXyHZeJsoC7bkUl5DVtzM5cZgDuqHkIrBqAXJyTNJwSNIc6wBJ2Q==",
       "path": "fleck/1.2.0",
       "hashPath": "fleck.1.2.0.nupkg.sha512"
-    },
-    "Microsoft.Web.WebView2/1.0.2420.47": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-XYZjxkepD+MwmIdeiWqjm2T8x4UmVZq4CDKUe7U6L1r+9VGo2Q88OeEgvyLYtgvebGGuSP6D74Z3wxdRwjH8IQ==",
-      "path": "microsoft.web.webview2/1.0.2420.47",
-      "hashPath": "microsoft.web.webview2.1.0.2420.47.nupkg.sha512"
     },
     "Newtonsoft.Json/13.0.4": {
       "type": "package",
