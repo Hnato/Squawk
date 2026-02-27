@@ -10,15 +10,13 @@
 using System;
 using System.Reflection;
 
-[assembly: System.Reflection.AssemblyCompanyAttribute("Hnato.")]
+[assembly: System.Reflection.AssemblyCompanyAttribute("Squawk.AvaloniaPanel")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
 [assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9b4d79790ba57e3237a9d93079f836dfbed8cd79")]
-[assembly: System.Reflection.AssemblyProductAttribute("SquawkServer")]
-[assembly: System.Reflection.AssemblyTitleAttribute("SquawkServer")]
+[assembly: System.Reflection.AssemblyProductAttribute("Squawk.AvaloniaPanel")]
+[assembly: System.Reflection.AssemblyTitleAttribute("Squawk.AvaloniaPanel")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
-[assembly: System.Runtime.Versioning.TargetPlatformAttribute("Windows7.0")]
-[assembly: System.Runtime.Versioning.SupportedOSPlatformAttribute("Windows7.0")]
 
 // Wygenerowane przez klasę WriteCodeFragment programu MSBuild.
 
