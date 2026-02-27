@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "dHqHfLCihBE=",
+  "dgSpecHash": "FGRadFxuo3o=",
   "success": true,
-  "projectFilePath": "C:\\Users\\user\\Music\\Squawk\\Server\\Server.csproj",
+  "projectFilePath": "c:\\Users\\user\\Music\\Squawk\\Server\\Server.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\user\\.nuget\\packages\\fleck\\1.2.0\\fleck.1.2.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\microsoft.net.illink.tasks\\10.0.1\\microsoft.net.illink.tasks.10.0.1.nupkg.sha512",

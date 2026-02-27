@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\user\\Music\\Squawk\\Server\\Server.csproj": {}
+    "c:\\Users\\user\\Music\\Squawk\\Server\\Server.csproj": {}
   },
   "projects": {
-    "C:\\Users\\user\\Music\\Squawk\\Server\\Server.csproj": {
+    "c:\\Users\\user\\Music\\Squawk\\Server\\Server.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\user\\Music\\Squawk\\Server\\Server.csproj",
+        "projectUniqueName": "c:\\Users\\user\\Music\\Squawk\\Server\\Server.csproj",
         "projectName": "SquawkServer",
-        "projectPath": "C:\\Users\\user\\Music\\Squawk\\Server\\Server.csproj",
+        "projectPath": "c:\\Users\\user\\Music\\Squawk\\Server\\Server.csproj",
         "packagesPath": "C:\\Users\\user\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\user\\Music\\Squawk\\Server\\obj\\",
+        "outputPath": "c:\\Users\\user\\Music\\Squawk\\Server\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\user\\AppData\\Roaming\\NuGet\\NuGet.Config"

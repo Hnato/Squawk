@@ -479,6 +479,11 @@ function updateLeaderboard(entries) {
     list.innerHTML = entries.map((e, i) => `<div>${i+1}. ${e.Name}: ${Math.floor(e.Score)}</div>`).join('');
 }
 
+let lastInputTime = 0;
+let lastInputX = 0;
+let lastInputY = 0;
+let lastInputBoosting = false;
+
 function update() {
     if (!socket || socket.readyState !== WebSocket.OPEN || !playerId || !cam) return;
 
@@ -491,13 +496,25 @@ function update() {
 
         const isBoosting = (cursors && cursors.space && cursors.space.isDown) || pointer.isDown;
 
-        socket.send(JSON.stringify({
-            Type: 'input',
-            TargetX: worldPoint.x,
-            TargetY: worldPoint.y,
-            IsBoosting: isBoosting
-        }));
+        // Throttle input to 30 times per second or if significant change
+        const now = Date.now();
+        const dist = Phaser.Math.Distance.Between(lastInputX, lastInputY, worldPoint.x, worldPoint.y);
+        
+        if (now - lastInputTime > 33 || dist > 5 || isBoosting !== lastInputBoosting) {
+            socket.send(JSON.stringify({
+                Type: 'input',
+                TargetX: worldPoint.x,
+                TargetY: worldPoint.y,
+                IsBoosting: isBoosting
+            }));
+            
+            lastInputTime = now;
+            lastInputX = worldPoint.x;
+            lastInputY = worldPoint.y;
+            lastInputBoosting = isBoosting;
+        }
     } catch (err) {
+        console.error('Update error:', err);
     }
 }
 

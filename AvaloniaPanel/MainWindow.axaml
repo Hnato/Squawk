@@ -10,6 +10,10 @@
         Foreground="{StaticResource BrushWhite}"
         mc:Ignorable="d"
         Title="SquawkServer">
+  <Window.Resources>
+    <local:StatusToColorConverter x:Key="StatusToColorConverter" />
+    <local:StatusToTextConverter x:Key="StatusToTextConverter" />
+  </Window.Resources>
   <Grid RowDefinitions="Auto,Auto,Auto,*"
         Margin="40">
 
@@ -29,81 +33,56 @@
           Margin="0,0,0,30"
           Width="650">
 
-      <Border Grid.Column="0"
-              Classes="button-frame"
-              Margin="0,0,20,0">
-        <Border Classes="button-inner">
-          <Grid ColumnDefinitions="Auto,*"
-                VerticalAlignment="Center">
-            <Border Width="36"
-                    Height="36"
-                    CornerRadius="18"
-                    Background="#FF6A1A"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Center"
-                    Margin="0,0,8,0">
-              <TextBlock Text="🔥"
-                         FontSize="22"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center" />
-            </Border>
-            <TextBlock Grid.Column="1"
-                       Classes="button-label"
-                       Text="Włącz Silnik Gry" />
-          </Grid>
+      <!-- Włącz Silnik Gry -->
+      <Button Grid.Column="0"
+              Command="{Binding ToggleGameCommand}"
+              Background="Transparent" BorderThickness="0" Padding="0">
+        <Border Classes="button-frame" Margin="0,0,20,0">
+          <Border Classes="button-inner" Background="{Binding IsGameRunning, Converter={StaticResource StatusToColorConverter}}">
+            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+              <Border Width="36" Height="36" CornerRadius="18" Background="#FF6A1A" Margin="0,0,8,0">
+                <TextBlock Text="🔥" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <TextBlock Grid.Column="1" Classes="button-label" 
+                         Text="{Binding IsGameRunning, Converter={StaticResource StatusToTextConverter}, ConverterParameter='Silnik Gry'}" />
+            </Grid>
+          </Border>
         </Border>
-      </Border>
+      </Button>
 
-      <Border Grid.Column="1"
-              Classes="button-frame"
-              Margin="10,0"
-              HorizontalAlignment="Center">
-        <Border Classes="button-inner">
-          <Grid ColumnDefinitions="Auto,*"
-                VerticalAlignment="Center">
-            <Border Width="36"
-                    Height="36"
-                    CornerRadius="8"
-                    Background="#E5BE55"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Center"
-                    Margin="0,0,8,0">
-              <TextBlock Text="🏠"
-                         FontSize="20"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center" />
-            </Border>
-            <TextBlock Grid.Column="1"
-                       Classes="button-label"
-                       Text="Włącz Strona" />
-          </Grid>
+      <!-- Włącz Strona -->
+      <Button Grid.Column="1"
+              Command="{Binding ToggleWebCommand}"
+              Background="Transparent" BorderThickness="0" Padding="0">
+        <Border Classes="button-frame" Margin="10,0">
+          <Border Classes="button-inner" Background="{Binding IsNetworkRunning, Converter={StaticResource StatusToColorConverter}}">
+            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+              <Border Width="36" Height="36" CornerRadius="8" Background="#E5BE55" Margin="0,0,8,0">
+                <TextBlock Text="🏠" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <TextBlock Grid.Column="1" Classes="button-label"
+                         Text="{Binding IsNetworkRunning, Converter={StaticResource StatusToTextConverter}, ConverterParameter='Strona'}" />
+            </Grid>
+          </Border>
         </Border>
-      </Border>
+      </Button>
 
-      <Border Grid.Column="2"
-              Classes="button-frame"
-              Margin="20,0,0,0">
-        <Border Classes="button-inner">
-          <Grid ColumnDefinitions="Auto,*"
-                VerticalAlignment="Center">
-            <Border Width="36"
-                    Height="36"
-                    CornerRadius="18"
-                    Background="#B0B0B0"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Center"
-                    Margin="0,0,8,0">
-              <TextBlock Text="☠"
-                         FontSize="22"
-                         HorizontalAlignment="Center"
-                         VerticalAlignment="Center" />
-            </Border>
-            <TextBlock Grid.Column="1"
-                       Classes="button-label"
-                       Text="Włącz Boty" />
-          </Grid>
+      <!-- Włącz Boty -->
+      <Button Grid.Column="2"
+              Command="{Binding ToggleBotsCommand}"
+              Background="Transparent" BorderThickness="0" Padding="0">
+        <Border Classes="button-frame" Margin="20,0,0,0">
+          <Border Classes="button-inner" Background="{Binding AreBotsEnabled, Converter={StaticResource StatusToColorConverter}}">
+            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+              <Border Width="36" Height="36" CornerRadius="18" Background="#B0B0B0" Margin="0,0,8,0">
+                <TextBlock Text="☠" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <TextBlock Grid.Column="1" Classes="button-label"
+                         Text="{Binding AreBotsEnabled, Converter={StaticResource StatusToTextConverter}, ConverterParameter='Boty'}" />
+            </Grid>
+          </Border>
         </Border>
-      </Border>
+      </Button>
     </Grid>
 
     <Border Grid.Row="2"
@@ -127,19 +106,14 @@
       <Border Background="{StaticResource BrushConsoleBack}"
               CornerRadius="4"
               Margin="6">
-        <ScrollViewer Margin="16"
-                      VerticalScrollBarVisibility="Auto">
-          <StackPanel>
-            <TextBlock Classes="console-line"
-                       Text="[INFO] Server Started..." />
-            <TextBlock Classes="console-line"
-                       Text="[INFO] Listening on Port 8080..." />
-            <TextBlock Classes="console-line"
-                       Foreground="{StaticResource BrushWarning}"
-                       Text="[WARNING] Bot Error Detected!" />
-            <TextBlock Classes="console-line"
-                       Text="[INFO] Game Engine Initialized!" />
-          </StackPanel>
+        <ScrollViewer Margin="16" VerticalScrollBarVisibility="Auto">
+          <ItemsControl ItemsSource="{Binding Logs}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Classes="console-line" Text="{Binding}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
         </ScrollViewer>
       </Border>
     </Border>

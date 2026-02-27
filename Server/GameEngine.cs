@@ -124,18 +124,15 @@ namespace Squawk.Server
         {
             lock (_parrots)
             {
-                if (_botsEnabled)
-                {
-                    foreach (var parrot in _parrots.Values.OfType<BotParrot>())
-                    {
-                        UpdateBotAI(parrot, deltaTime);
-                    }
-                }
-
-                // Update Movement
-                foreach (var parrot in _parrots.Values.ToList())
+                foreach (var parrot in _parrots.Values)
                 {
                     if (!parrot.IsAlive) continue;
+
+                    if (_botsEnabled && parrot is BotParrot bot)
+                    {
+                        UpdateBotAI(bot, deltaTime);
+                    }
+
                     UpdateParrot(parrot, deltaTime);
                 }
 

@@ -20,17 +20,29 @@ namespace Squawk.Server.Gui
             ClientSize = new Size(900, 700);
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
-            var iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Client", "logo.ico");
+            
+            string iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Client", "logo.ico");
             if (System.IO.File.Exists(iconPath))
             {
                 Icon = new Icon(iconPath);
             }
+            
             InitializeComponent();
+            
             Program.Log.Subscribe(AppendLogLine);
             Program.GameStateChanged += OnGameStateChanged;
             Program.NetworkStateChanged += OnNetworkStateChanged;
             Program.BotsStateChanged += OnBotsStateChanged;
+            
             UpdateButtonsInitial();
+        }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            base.OnFormClosed(e);
+            _iconOn?.Dispose();
+            _iconOff?.Dispose();
+            Icon?.Dispose();
         }
 
         private void InitializeComponent()
@@ -167,42 +179,35 @@ namespace Squawk.Server.Gui
 
         private void AppendLogLine(string line)
         {
-            if (InvokeRequired)
-            {
-                BeginInvoke(new Action<string>(AppendLogLine), line);
-                return;
-            }
-            _logBox.AppendText(line);
+            RunOnUI(() => _logBox.AppendText(line));
         }
 
         private void OnGameStateChanged(bool on)
         {
-            if (InvokeRequired)
-            {
-                BeginInvoke(new Action<bool>(OnGameStateChanged), on);
-                return;
-            }
-            UpdateButtonVisuals(_btnGame, on, "Gra");
+            RunOnUI(() => UpdateButtonVisuals(_btnGame, on, "Gra"));
         }
 
         private void OnNetworkStateChanged(bool on)
         {
-            if (InvokeRequired)
-            {
-                BeginInvoke(new Action<bool>(OnNetworkStateChanged), on);
-                return;
-            }
-            UpdateButtonVisuals(_btnNetwork, on, "Sieć");
+            RunOnUI(() => UpdateButtonVisuals(_btnNetwork, on, "Sieć"));
         }
 
         private void OnBotsStateChanged(bool on)
         {
+            RunOnUI(() => UpdateButtonVisuals(_btnBots, on, "Boty"));
+        }
+
+        private void RunOnUI(Action action)
+        {
+            if (IsDisposed) return;
             if (InvokeRequired)
             {
-                BeginInvoke(new Action<bool>(OnBotsStateChanged), on);
-                return;
+                BeginInvoke(action);
             }
-            UpdateButtonVisuals(_btnBots, on, "Boty");
+            else
+            {
+                action();
+            }
         }
 
         private void UpdateButtonsInitial()

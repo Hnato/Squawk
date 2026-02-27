@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Hnato.")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5d2a726a864e8464bad18e88d144e1cf2380ab77")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
 [assembly: System.Reflection.AssemblyProductAttribute("SquawkServer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SquawkServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
