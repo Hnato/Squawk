@@ -12,7 +12,7 @@ using System.IO;
 
 namespace Squawk.Server
 {
-    class Program
+    public class Program
     {
         private const int Port = 5004;
         private const int HttpPort = 5006;
@@ -238,15 +238,21 @@ namespace Squawk.Server
             try { BotsStateChanged?.Invoke(enabled); } catch { }
         }
 
-        private static void GameLoop()
+        private static readonly Dictionary<string, byte[]> _resourceCache = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+
+        public static void GameLoop()
         {
-            DateTime lastTick = DateTime.Now;
+            var stopwatch = Stopwatch.StartNew();
+            long lastTick = 0;
             int frameCount = 0;
+            
+            var deathMsgJson = JsonConvert.SerializeObject(new BaseMessage { Type = MessageType.Death });
+            
             while (_gameRunning)
             {
-                DateTime now = DateTime.Now;
-                float deltaTime = (float)(now - lastTick).TotalSeconds;
-                lastTick = now;
+                long currentTick = stopwatch.ElapsedMilliseconds;
+                float deltaTime = (currentTick - lastTick) / 1000.0f;
+                lastTick = currentTick;
                 frameCount++;
 
                 _engine.Update(deltaTime);
@@ -261,8 +267,6 @@ namespace Squawk.Server
                     var leaderboard = _engine.GetLeaderboard();
                     leaderboardJson = JsonConvert.SerializeObject(leaderboard);
                 }
-
-                var deathMsgJson = JsonConvert.SerializeObject(new BaseMessage { Type = MessageType.Death });
 
                 foreach (var client in _clients.Keys.ToList())
                 {
@@ -289,7 +293,7 @@ namespace Squawk.Server
                             }
                         }
                     }
-                    catch (Exception)
+                    catch
                     {
                         if (_clients.ContainsKey(client))
                         {
@@ -302,7 +306,9 @@ namespace Squawk.Server
                     }
                 }
 
-                Thread.Sleep(33);
+                int elapsed = (int)(stopwatch.ElapsedMilliseconds - currentTick);
+                int wait = Math.Max(1, 33 - elapsed);
+                Thread.Sleep(wait);
             }
         }
 
@@ -418,9 +424,16 @@ namespace Squawk.Server
         {
             var relativePath = requestPath.TrimStart('/');
             if (string.IsNullOrWhiteSpace(relativePath)) relativePath = "index.html";
+
+            if (_resourceCache.TryGetValue(relativePath, out var cached))
+            {
+                return cached;
+            }
+
             var assembly = Assembly.GetExecutingAssembly();
             var normalizedWanted = ("Client/" + relativePath.Replace('\\', '/')).Replace('/', '.');
             Stream? stream = null;
+            
             foreach (var name in assembly.GetManifestResourceNames())
             {
                 if (name.EndsWith(normalizedWanted, StringComparison.OrdinalIgnoreCase))
@@ -429,6 +442,7 @@ namespace Squawk.Server
                     break;
                 }
             }
+            
             if (stream == null)
             {
                 foreach (var name in assembly.GetManifestResourceNames())
@@ -440,10 +454,16 @@ namespace Squawk.Server
                     }
                 }
             }
+
             if (stream == null) return null;
-            using var ms = new MemoryStream();
-            stream.CopyTo(ms);
-            return ms.ToArray();
+            
+            using (var ms = new MemoryStream())
+            {
+                stream.CopyTo(ms);
+                var bytes = ms.ToArray();
+                _resourceCache[relativePath] = bytes;
+                return bytes;
+            }
         }
 
         private static void WaitForExit()
@@ -501,7 +521,7 @@ namespace Squawk.Server
             }
         }
 
-        internal static class Log
+        public static class Log
         {
             private static readonly string PathLog = System.IO.Path.Combine(AppContext.BaseDirectory, "Squawk.log");
             public static event Action<string>? MessageLogged;
