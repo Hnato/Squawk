@@ -80,6 +80,8 @@ namespace Squawk.Server.Gui
                 Program.SetBotsEnabled(!Program.AreBotsEnabled);
             };
 
+
+
             var headerPanel = new Panel();
             headerPanel.Dock = DockStyle.Top;
             headerPanel.Height = 80;
