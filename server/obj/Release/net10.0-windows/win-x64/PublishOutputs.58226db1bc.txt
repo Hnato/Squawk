@@ -1,0 +1,2 @@
+C:\Users\adamh\Documents\Squawk\Squawk\dist\SquawkServer.pdb
+C:\Users\adamh\Documents\Squawk\Squawk\dist\SquawkServer.exe

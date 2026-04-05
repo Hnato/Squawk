@@ -1,0 +1,21 @@
+{
+  "name": "Squawk - Multiplayer Parrot Game",
+  "short_name": "Squawk",
+  "description": "A high-performance multiplayer parrot battle game.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#0a0a0b",
+  "theme_color": "#121214",
+  "icons": [
+    {
+      "src": "/img/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/img/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
