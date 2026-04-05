@@ -12,6 +12,7 @@ public class Player
     public int Score { get; set; }
     public bool IsBot { get; set; }
     public string Color { get; set; } = "green";
+    public bool IsDead { get; set; } = false;
 }
 
 public class Food
@@ -20,6 +21,8 @@ public class Food
     public Vector2 Position { get; set; }
     public int Value { get; set; }
     public string Color { get; set; } = "yellow";
+    public bool IsPowerUp { get; set; } = false;
+    public string Type { get; set; } = "food"; // "food", "speed", "score"
 }
 
 public class User

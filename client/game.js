@@ -4,6 +4,13 @@ const config = {
     width: window.innerWidth,
     height: window.innerHeight,
     backgroundColor: '#000000',
+    physics: {
+        default: 'arcade',
+        arcade: {
+            gravity: { y: 0 },
+            debug: false
+        }
+    },
     scene: {
         preload: preload,
         create: create,
@@ -11,524 +18,456 @@ const config = {
     }
 };
 
-const COLORS = [
-    { 
-        name: 'Green',
-        base: 0x5CCB00, 
-        accent: 0xA8E600, 
-        beak: 0xFFD400, 
-        wing: 0xFFEA00,
-        outline: 0x2D6600
-    },
-    { 
-        name: 'Blue',
-        base: 0x2CB7FF, 
-        accent: 0x7DD8FF, 
-        beak: 0xFF9E00, 
-        wing: 0x005EFF,
-        outline: 0x165C80
-    },
-    { 
-        name: 'Purple',
-        base: 0x8A2BE2, 
-        accent: 0xB266FF, 
-        beak: 0xFFB347, 
-        wing: 0x4B0082,
-        outline: 0x451571
-    }
-];
-
 let game = new Phaser.Game(config);
 let socket;
 let playerId;
 let players = {};
-let feathers = {};
-let cursors;
-let isBoosting = false;
-let mapRadius = 7500;
+let foodItems = {};
+let mapRadius = 1500;
 let cam;
+let isAuthorized = false;
+let parallaxGrid;
+let foodGraphics;
+let minimapCanvas, minimapCtx;
+let terrainGraphics;
+let minimapVisible = true;
 
 function preload() {
-    this.load.image('parrot_head', 'logo.png');
+    // We'll use graphics for the parrot design as requested
 }
 
 function create() {
-    console.log('Phaser create() started');
     cam = this.cameras.main;
-    cursors = this.input.keyboard.createCursorKeys();
     
+    // 0. Terrain Textures (drawn once)
+    terrainGraphics = this.add.graphics();
+    terrainGraphics.setDepth(-8);
+    drawTerrain(terrainGraphics);
+
+    foodGraphics = this.add.graphics();
+    foodGraphics.setDepth(-3);
+    
+    // Initialize Minimap
+    minimapCanvas = document.getElementById('minimap');
+    if (minimapCanvas) {
+        minimapCtx = minimapCanvas.getContext('2d');
+    }
+
+    // Tab key for minimap toggle
+    this.input.keyboard.on('keydown-TAB', (event) => {
+        event.preventDefault();
+        minimapVisible = !minimapVisible;
+        const minimapContainer = document.getElementById('minimap-container');
+        if (minimapContainer) {
+            minimapContainer.style.display = minimapVisible ? 'block' : 'none';
+        }
+    });
+
+    // 1. Dynamic Parallax Grid (Scrolling background)
+    parallaxGrid = this.add.grid(0, 0, window.innerWidth * 2, window.innerHeight * 2, 64, 64, 0x000000, 0, 0x00ff88, 0.05);
+    parallaxGrid.setScrollFactor(0);
+    parallaxGrid.setDepth(-10);
+
+    // 2. Circular Game Board
     const bg = this.add.graphics();
-    bg.setDepth(-10);
+    bg.setDepth(-9);
     bg.fillStyle(0x050505, 1);
     bg.fillCircle(mapRadius, mapRadius, mapRadius);
     
-    const grid = this.add.grid(mapRadius, mapRadius, mapRadius * 2, mapRadius * 2, 200, 200, 0x000000, 0, 0xffffff, 0.03);
-    grid.setDepth(-9);
-    
+    // Thick green boundary line
     const border = this.add.graphics();
-    border.setDepth(-8);
-    border.lineStyle(10, 0xffffff, 0.1);
+    border.setDepth(-4);
+    border.lineStyle(20, 0x00ff00, 1); // Thick green line
     border.strokeCircle(mapRadius, mapRadius, mapRadius);
 
-    this.mapGraphics = { bg, grid, border };
-
+    this.mapGraphics = { bg, border };
     cam.centerOn(mapRadius, mapRadius);
 
-    const miniMapSize = 200; 
-    const miniMapMargin = 20;
-    this.miniMapContainer = this.add.container(miniMapMargin, this.scale.height - miniMapSize - miniMapMargin);
-    this.miniMapContainer.setScrollFactor(0);
-    this.miniMapContainer.setDepth(1001);
-    this.miniMapContainer.setVisible(false);
-
-    const miniMapBg = this.add.graphics();
-    miniMapBg.fillStyle(0x000000, 0.7);
-    miniMapBg.fillCircle(miniMapSize/2, miniMapSize/2, miniMapSize/2);
-    miniMapBg.lineStyle(2, 0xffffff, 0.3);
-    miniMapBg.strokeCircle(miniMapSize/2, miniMapSize/2, miniMapSize/2);
-    this.miniMapContainer.add(miniMapBg);
-
-    this.miniMapSnakes = this.add.graphics();
-    this.miniMapContainer.add(this.miniMapSnakes);
-
-    this.miniMapPlayer = this.add.graphics();
-    this.miniMapContainer.add(this.miniMapPlayer);
-
-    const maskShape = this.make.graphics();
-    maskShape.fillStyle(0xffffff);
-    maskShape.fillCircle(miniMapSize/2, miniMapSize/2, miniMapSize/2);
-    const mask = maskShape.createGeometryMask();
-    this.miniMapSnakes.setMask(mask);
-
-    this.miniMapDebug = this.add.text(miniMapSize/2, miniMapSize + 10, '', { fontSize: '10px', fill: '#ffffff' }).setOrigin(0.5);
-    this.miniMapContainer.add(this.miniMapDebug);
-    console.log('MiniMap system initialized at:', miniMapMargin, this.scale.height - miniMapSize - miniMapMargin);
-
-    window.onerror = function(message, source, lineno, colno, error) {
-        console.error('GLOBAL JS ERROR:', message, 'at', source, ':', lineno, ':', colno);
-        return false;
-    };
-
-    document.getElementById('startBtn').addEventListener('click', () => {
-        const name = document.getElementById('playerName').value || 'Papuga';
-        connectToServer(name);
-        document.getElementById('login').style.display = 'none';
-        document.getElementById('leaderboard').style.display = 'block';
-        const scene = game.scene.scenes[0];
-        if (scene && scene.miniMapContainer) {
-            scene.miniMapContainer.setVisible(true);
-        }
-});
+    setupAuthUI();
 }
 
-function connectToServer(name) {
-    const wsPort = window.location.port ? parseInt(window.location.port) - 1 : 5005;
+function drawTerrain(graphics) {
+    // Random terrain patches (grass, sand, rocks)
+    const patchCount = 100;
+    const colors = [0x2d5a27, 0xc2b280, 0x4a4a4a]; // Green, Sand, Rock
+    
+    for (let i = 0; i < patchCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * (mapRadius - 100);
+        const x = mapRadius + Math.cos(angle) * dist;
+        const y = mapRadius + Math.sin(angle) * dist;
+        const size = 50 + Math.random() * 150;
+        
+        graphics.fillStyle(colors[Math.floor(Math.random() * colors.length)] || colors[0], 0.1);
+        graphics.fillEllipse(x, y, size, size * 0.7);
+    }
+}
+
+function setupAuthUI() {
+    const authModal = document.getElementById('auth-modal');
+    const authBtn = document.getElementById('auth-btn');
+    const switchLink = document.getElementById('switch-link');
+    const modalTitle = document.getElementById('modal-title');
+    const switchText = document.getElementById('switch-text');
+    const errorMsg = document.getElementById('error-msg');
+    const usernameInput = document.getElementById('username');
+
+    // Load saved username
+    const savedUsername = localStorage.getItem('squawk_username');
+    if (savedUsername) {
+        usernameInput.value = savedUsername;
+    }
+
+    let isRegisterMode = false;
+
+    switchLink.addEventListener('click', () => {
+        isRegisterMode = !isRegisterMode;
+        modalTitle.textContent = isRegisterMode ? 'Rejestracja' : 'Logowanie';
+        authBtn.textContent = isRegisterMode ? 'Zarejestruj się' : 'Zaloguj się';
+        switchText.textContent = isRegisterMode ? 'Masz już konto?' : 'Nie masz konta?';
+        switchLink.textContent = isRegisterMode ? 'Zaloguj się' : 'Zarejestruj się';
+        errorMsg.textContent = '';
+    });
+
+    authBtn.addEventListener('click', () => {
+        const username = usernameInput.value;
+        const password = document.getElementById('password').value;
+
+        if (!username || !password) {
+            errorMsg.textContent = 'Wypełnij wszystkie pola!';
+            return;
+        }
+
+        // Save username for next time
+        localStorage.setItem('squawk_username', username);
+
+        connectToServer(username, password, isRegisterMode);
+    });
+}
+
+function connectToServer(username, password, isRegister) {
+    const wsPort = window.location.port ? parseInt(window.location.port) : 5005; 
     const wsHost = window.location.hostname || '127.0.0.1';
-    console.log(`Attempting to connect to server at ws://${wsHost}:${wsPort}...`);
+    
+    if (socket) socket.close();
+    
     socket = new WebSocket(`ws://${wsHost}:${wsPort}`);
 
     socket.onopen = () => {
-        console.log('Połączono z serwerem, wysyłanie prośby o dołączenie...');
-        socket.send(JSON.stringify({ Type: 'join', Name: name }));
+        console.log('Connected to server, authenticating...');
+        socket.send(JSON.stringify({
+            Type: 'auth',
+            Data: {
+                username: username,
+                password: password,
+                register: isRegister
+            }
+        }));
     };
 
     socket.onmessage = (event) => {
         try {
-            const data = JSON.parse(event.data);
-
-            if (data.Type === 'welcome') {
-                playerId = data.PlayerId;
-                console.log('Welcome received, playerId:', playerId);
-                if (data.MapRadius) {
-                    mapRadius = data.MapRadius;
-                    console.log('Map radius updated to:', mapRadius);
-                    const scene = game.scene.scenes[0];
-                    if (scene && scene.mapGraphics) {
-                        const { bg, grid, border } = scene.mapGraphics;
-                        bg.clear();
-                        bg.fillStyle(0x050505, 1);
-                        bg.fillCircle(mapRadius, mapRadius, mapRadius);
-                        
-                        grid.setPosition(mapRadius, mapRadius);
-                        grid.setSize(mapRadius * 2, mapRadius * 2);
-                        
-                        border.clear();
-                        border.lineStyle(10, 0xffffff, 0.1);
-                        border.strokeCircle(mapRadius, mapRadius, mapRadius);
-
-                        scene.cameras.main.centerOn(mapRadius, mapRadius);
-                    }
-                }
-            } else if (data.Type === 'update') {
-                handleGameUpdate(data);
-            } else if (data.Type === 'death') {
-                playerId = null;
-                if (socket) {
-                    socket.close();
-                }
-                document.getElementById('login').style.display = 'block';
-                document.getElementById('leaderboard').style.display = 'none';
-                const scene = game.scene.scenes[0];
-                if (scene && scene.miniMapContainer) {
-                    scene.miniMapContainer.setVisible(false);
-                }
-            } else if (data.Type === 'leaderboard') {
-                updateLeaderboard(data.Entries);
-            }
+            const msg = JSON.parse(event.data);
+            handleServerMessage(msg, username);
         } catch (err) {
-            console.error('Error parsing socket message:', err, event.data);
+            console.error('Error parsing message:', err);
         }
     };
 
     socket.onclose = () => {
-        console.log('Rozłączono z serwerem');
-        document.getElementById('login').style.display = 'block';
+        console.log('Disconnected from server');
+        isAuthorized = false;
+        document.getElementById('auth-modal').style.display = 'flex';
+        // Clear existing players
+        Object.values(players).forEach(p => p.destroy());
+        players = {};
     };
 }
 
-function handleGameUpdate(data) {
-        const scene = game.scene.scenes[0];
-        if (!scene) return;
-
-        if (!data || !data.Parrots || !data.Feathers) {
-            console.warn('Incomplete data received from server');
-            return;
-        }
-
-    const currentIds = data.Parrots.map(p => p.Id);
-    if (data.Parrots) {
-        Object.keys(players).forEach(id => {
-            if (!data.Parrots.find(p => p && p.Id === id)) {
-                if (players[id]) {
-                    if (players[id].segments) {
-                        players[id].segments.forEach(s => s && s.destroy());
-                    }
-                    if (players[id].nameText) {
-                        players[id].nameText.destroy();
-                    }
-                    delete players[id];
-                }
-            }
-        });
-    }
-
-    if (data.Parrots) {
-        data.Parrots.forEach(pData => {
-            if (!pData || !pData.Id) return;
-            
-            if (!players[pData.Id]) {
-            let colorIndex = pData.Name.length % COLORS.length;
-            if (pData.Id === playerId) colorIndex = 0; 
-            
-            players[pData.Id] = {
-                segments: [],
-                nameText: scene.add.text(0, 0, pData.Name, { 
-                    fontSize: '14px', 
-                    fill: '#ffffff',
-                    fontStyle: '600',
-                    stroke: '#000000',
-                    strokeThickness: 2,
-                    padding: { x: 4, y: 2 }
-                }).setOrigin(0.5),
-                color: COLORS[colorIndex],
-                lastEnergy: pData.Energy,
-                lastSize: pData.Size || 1,
-                currentVisualSize: pData.Size || 1,
-                wingRotation: 0
-            };
-            players[pData.Id].nameText.setAlpha(0);
-            scene.tweens.add({
-                targets: players[pData.Id].nameText,
-                alpha: 0.8,
-                duration: 500
-            });
-        }
-
-        const p = players[pData.Id];
-        
-        if (p.currentVisualSize !== pData.Size) {
-            scene.tweens.add({
-                targets: p,
-                currentVisualSize: pData.Size,
-                duration: 800,
-                ease: 'Cubic.out'
-            });
-        }
-        
-        const size = p.currentVisualSize || 1;
-        const headHeight = 24 * size;
-        
-        if (!pData.Segments || pData.Segments.length === 0) return;
-
-        const distToPlayer = Phaser.Math.Distance.Between(cam.worldView ? cam.worldView.centerX : 0, cam.worldView ? cam.worldView.centerY : 0, pData.X, pData.Y);
-        const isFar = distToPlayer > 1500;
-        const maxSegmentsLOD = isFar ? Math.min(pData.Segments.length, 5) : pData.Segments.length;
-
-        while (p.segments.length < maxSegmentsLOD) {
-            const isHead = p.segments.length === 0;
-            const segmentIndex = p.segments.length;
-            const isTail = segmentIndex >= pData.Segments.length - 3 && pData.Segments.length > 5;
-            
-            let seg;
-            if (isHead) {
-                seg = scene.add.container(0, 0);
-                
-                const headBase = scene.add.ellipse(0, 0, headHeight, headHeight * 1.1, p.color.base);
-                headBase.setStrokeStyle(headHeight * 0.1, p.color.outline);
-                
-                const eyeWhite = scene.add.circle(headHeight * 0.2, -headHeight * 0.1, headHeight * 0.35 / 2, 0xffffff);
-                const pupil = scene.add.circle(headHeight * 0.25, -headHeight * 0.1, headHeight * 0.2 / 2, 0x000000);
-                
-                const beakUpper = scene.add.ellipse(headHeight * 0.5, headHeight * 0.1, headHeight * 0.6, headHeight * 0.4, p.color.beak);
-                beakUpper.setStrokeStyle(2, p.color.outline);
-
-                seg.add([headBase, beakUpper, eyeWhite, pupil]);
-                seg.headFeatures = { headBase, beakUpper, eyeWhite, pupil };
+function handleServerMessage(msg, username) {
+    switch (msg.Type) {
+        case 'auth_response':
+            if (msg.Data.success) {
+                document.getElementById('auth-modal').style.display = 'none';
+                isAuthorized = true;
+                socket.send(JSON.stringify({
+                    Type: 'join',
+                    Data: { name: username }
+                }));
             } else {
-                seg = scene.add.container(0, 0);
-                const segWidth = headHeight * 0.8;
-                const segHeight = headHeight * 0.6;
-                
-                const bodyPart = scene.add.rectangle(0, 0, segWidth, segHeight, p.color.base, 1);
-                bodyPart.setStrokeStyle(segHeight * 0.1, p.color.outline);
-                
-                seg.add([bodyPart]);
-
-                if (isTail && !isFar) {
-                    const wing = scene.add.ellipse(0, 0, headHeight * 1.2, headHeight * 0.4, p.color.wing);
-                    wing.setStrokeStyle(2, p.color.outline);
-                    wing.setOrigin(0, 0.5);
-                    seg.add(wing);
-                    seg.wing = wing;
-                    seg.sendToBack(wing);
-                }
+                document.getElementById('error-msg').textContent = msg.Data.message || 'Błąd autoryzacji!';
             }
-            
-            p.segments.push(seg);
+            break;
+
+        case 'joined':
+            playerId = msg.Data.id;
+            console.log('Joined with ID:', playerId);
+            break;
+
+        case 'state':
+            updateGameState(msg.Data);
+            break;
+
+        case 'death':
+            console.log('Player died:', msg.Data.reason);
+            isAuthorized = false;
+            playerId = null;
+            document.getElementById('auth-modal').style.display = 'flex';
+            document.getElementById('error-msg').textContent = 'Zginąłeś! ' + (msg.Data.reason || '');
+            break;
+    }
+}
+
+function updateGameState(data) {
+    const scene = game.scene.scenes[0];
+    if (!scene) return;
+
+    // Update Player Counter
+    const playerCountEl = document.getElementById('player-count');
+    if (playerCountEl) {
+        playerCountEl.textContent = data.players.length;
+    }
+
+    // Update Players (Parrots)
+    data.players.forEach(p => {
+        if (!players[p.Id]) {
+            players[p.Id] = createParrot(scene, p);
         }
+        updateParrot(players[p.Id], p);
+    });
 
-        while (p.segments.length > maxSegmentsLOD) {
-            const seg = p.segments.pop();
-            seg.destroy();
+    // Remove disconnected players
+    const activeIds = data.players.map(p => p.Id);
+    Object.keys(players).forEach(id => {
+        if (!activeIds.includes(id)) {
+            players[id].destroy();
+            delete players[id];
         }
+    });
 
-        const isVisible = true;
-        
-        if (isVisible) {
-            p.nameText.setVisible(true);
-            p.segments.forEach(s => s.setVisible(true));
+    // Camera follow local player
+    if (playerId && players[playerId]) {
+        const player = players[playerId];
+        // Smoothly center the camera
+        cam.scrollX = player.x - cam.width / 2;
+        cam.scrollY = player.y - cam.height / 2;
+    } else if (playerId) {
+        // Fallback for initial state before player is created
+        cam.centerOn(mapRadius, mapRadius);
+    }
+
+    // Update Leaderboard
+    updateLeaderboard(data.leaderboard);
+
+    // Draw Food and Power-ups
+    foodGraphics.clear();
+    data.food.forEach(f => {
+        if (f.Value > 0) {
+            const color = Phaser.Display.Color.HexStringToColor(f.Color).color;
+            foodGraphics.fillStyle(color, 1);
+            if (f.IsPowerUp) {
+                // Draw star-like shape for power-ups
+                drawStar(foodGraphics, f.Position.X, f.Position.Y, 5, 12, 6);
+            } else {
+                foodGraphics.fillCircle(f.Position.X, f.Position.Y, 6);
+            }
+        }
+    });
+
+    // Draw Minimap
+    drawMinimap(data.players);
+}
+
+function drawMinimap(allPlayers) {
+    if (!minimapCtx || !minimapCanvas || !minimapVisible) return;
+
+    // Clear background
+    minimapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+    minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    minimapCtx.fillRect(0, 0, 200, 200);
+    
+    // Draw boundary
+    minimapCtx.strokeStyle = '#00ff88';
+    minimapCtx.lineWidth = 1;
+    minimapCtx.strokeRect(5, 5, 190, 190);
+
+    const scale = 190 / (mapRadius * 2);
+
+    allPlayers.forEach(p => {
+        const head = p.Body[0];
+        const mx = 5 + head.X * scale;
+        const my = 5 + head.Y * scale;
+
+        if (p.Id === playerId) {
+            // Local player indicator
+            minimapCtx.fillStyle = '#ffffff';
+            minimapCtx.beginPath();
+            minimapCtx.arc(mx, my, 4, 0, Math.PI * 2);
+            minimapCtx.fill();
             
-            p.wingRotation = Math.sin(Date.now() / 200) * 0.2;
-
-            pData.Segments.forEach((pos, i) => {
-                if (i >= p.segments.length) return;
-                const seg = p.segments[i];
-                seg.x = pos.X;
-                seg.y = pos.Y;
-                
-                const angle = i < pData.Segments.length - 1 ? 
-                    Math.atan2(pData.Segments[i].Y - pData.Segments[i+1].Y, pData.Segments[i].X - pData.Segments[i+1].X) : 
-                    (i > 0 ? Math.atan2(pData.Segments[i-1].Y - pData.Segments[i].Y, pData.Segments[i-1].X - pData.Segments[i].X) : 0);
-                
-                seg.rotation = angle;
-                
-                const boostScale = pData.IsBoosting ? 1.15 : 1.0;
-                seg.setScale((size / (1 + (pData.Energy/100))) * boostScale);
-
-                if (seg.headFeatures) {
-                    if (pData.IsBoosting) {
-                        seg.headFeatures.headBase.setStrokeStyle(headHeight * 0.15, 0xffffff, 0.8);
-                        
-                        if (i === 0 && Math.random() < 0.3) {
-                            const trail = scene.add.particles(0, 0, 'parrot_head', {
-                                x: seg.x,
-                                y: seg.y,
-                                speed: 20,
-                                scale: { start: 0.1 * size, end: 0 },
-                                alpha: { start: 0.4, end: 0 },
-                                lifespan: 300,
-                                tint: p.color.base,
-                                maxParticles: 1
-                            });
-                            scene.time.delayedCall(300, () => trail.destroy());
-                        }
-                    } else {
-                        seg.headFeatures.headBase.setStrokeStyle(headHeight * 0.1, p.color.outline);
-                    }
-                }
-
-                if (seg.wing) {
-                    seg.wing.rotation = p.wingRotation * (i % 2 === 0 ? 1 : -1);
-                }
-
-                seg.setDepth(100 - i);
-            });
+            // Vision cone
+            minimapCtx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            minimapCtx.beginPath();
+            minimapCtx.arc(mx, my, 25, p.Angle - 0.5, p.Angle + 0.5);
+            minimapCtx.stroke();
         } else {
-            p.nameText.setVisible(false);
-            p.segments.forEach(s => s.setVisible(false));
-        }
-
-        if (pData.Energy > p.lastEnergy) {
-            const head = p.segments[0];
-            scene.tweens.add({
-                targets: head,
-                scale: 1.2,
-                duration: 100,
-                yoyo: true
-            });
-            const emitter = scene.add.particles(0, 0, 'parrot_head', {
-                x: pData.X,
-                y: pData.Y,
-                speed: { min: 50, max: 150 },
-                scale: { start: 0.1, end: 0 },
-                lifespan: 400,
-                tint: p.color.base,
-                maxParticles: 5
-            });
-            scene.time.delayedCall(400, () => emitter.destroy());
-        }
-        p.lastEnergy = pData.Energy;
-
-        p.nameText.x = pData.X;
-        p.nameText.y = pData.Y - 60 * size;
-        p.nameText.setDepth(200);
-
-        if (pData.Id === playerId) {
-            cam.startFollow(p.segments[0], true, 0.1, 0.1);
-            const zoom = Math.max(0.3, 0.8 / size);
-            cam.setZoom(Phaser.Math.Linear(cam.zoom, zoom, 0.1));
+            // Other players in their own color, bots in blue as requested
+            minimapCtx.fillStyle = p.IsBot ? '#00b4ff' : p.Color;
+            minimapCtx.beginPath();
+            minimapCtx.arc(mx, my, 2.5, 0, Math.PI * 2);
+            minimapCtx.fill();
         }
     });
+}
 
-    if (scene.miniMapSnakes && scene.miniMapPlayer) {
-        scene.miniMapSnakes.clear();
-        scene.miniMapPlayer.clear();
-        const miniMapSize = 200;
-        const scale = miniMapSize / (mapRadius * 2);
-
-        data.Parrots.forEach(pData => {
-            if (!pData.Segments || pData.Segments.length < 2) return;
-
-            const isLocal = pData.Id === playerId;
-            const color = isLocal ? 0xffffff : (players[pData.Id]?.color?.base || 0xff0000);
-            
-            scene.miniMapSnakes.lineStyle(2, color, isLocal ? 1 : 0.7);
-            scene.miniMapSnakes.beginPath();
-            
-            pData.Segments.forEach((seg, idx) => {
-                const sx = seg.X * scale;
-                const sy = seg.Y * scale;
-                if (idx === 0) scene.miniMapSnakes.moveTo(sx, sy);
-                else scene.miniMapSnakes.lineTo(sx, sy);
-            });
-            
-            scene.miniMapSnakes.strokePath();
-
-            if (isLocal) {
-                scene.miniMapPlayer.fillStyle(0xffffff, 1);
-                scene.miniMapPlayer.fillCircle(pData.X * scale, pData.Y * scale, 3);
-            }
-        });
+function drawStar(graphics, x, y, points, outerRadius, innerRadius) {
+    let step = Math.PI / points;
+    let rotation = -Math.PI / 2;
+    graphics.beginPath();
+    for (let i = 0; i < points * 2; i++) {
+        let r = (i % 2 === 0) ? outerRadius : innerRadius;
+        let px = x + Math.cos(rotation) * r;
+        let py = y + Math.sin(rotation) * r;
+        if (i === 0) graphics.moveTo(px, py);
+        else graphics.lineTo(px, py);
+        rotation += step;
     }
+    graphics.closePath();
+    graphics.fillPath();
+}
 
-    const currentFeatherIds = (data && data.Feathers) ? data.Feathers.map(f => f.Id) : [];
-    Object.keys(feathers).forEach(id => {
-        if (!currentFeatherIds.includes(id)) {
-            if (feathers[id] && typeof feathers[id].destroy === 'function') {
-                feathers[id].destroy();
-            }
-            delete feathers[id];
-        }
+function createParrot(scene, data) {
+    const container = scene.add.container(data.Body[0].X, data.Body[0].Y);
+    
+    // Shadow under parrot
+    const shadow = scene.add.ellipse(0, 15, 30, 15, 0x000000, 0.3);
+    container.add(shadow);
+
+    // Parrot Body Design
+    const body = scene.add.graphics();
+    const color = Phaser.Display.Color.HexStringToColor(data.Color).color;
+    
+    // Feathers (body)
+    body.fillStyle(color, 1);
+    body.fillEllipse(0, 0, 40, 25); 
+    
+    // Wings with feather detail
+    body.fillStyle(color, 0.8);
+    body.fillEllipse(-5, -12, 22, 12);
+    body.fillEllipse(-5, 12, 22, 12);
+    
+    // Head
+    body.fillStyle(color, 1);
+    body.fillCircle(15, 0, 14);
+    
+    // Eye
+    body.fillStyle(0xffffff, 1);
+    body.fillCircle(20, -4, 4);
+    body.fillStyle(0x000000, 1);
+    body.fillCircle(21, -4, 2);
+    
+    // Beak
+    body.fillStyle(0xffd700, 1);
+    body.fillTriangle(25, -6, 25, 6, 38, 0);
+
+    container.add(body);
+    
+    // Updated Font Design
+    const nameText = scene.add.text(0, -40, data.Name, { 
+        fontSize: '14px', 
+        fontFamily: 'Arial, sans-serif',
+        fill: '#fff',
+        fontStyle: 'bold',
+        stroke: '#000',
+        strokeThickness: 2,
+        shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 0, stroke: true, fill: true }
+    }).setOrigin(0.5);
+    container.add(nameText);
+    
+    container.bodyGraphics = body;
+    container.nameText = nameText;
+    container.shadow = shadow;
+    
+    return container;
+}
+
+function updateParrot(container, data) {
+    const head = data.Body[0];
+    container.setPosition(head.X, head.Y);
+    container.setRotation(data.Angle);
+    container.nameText.setRotation(-data.Angle); // Keep name upright
+    
+    // Animated wings and shadow effect
+    const wingTime = Date.now() / 100;
+    const wingScale = 1 + Math.sin(wingTime) * 0.15;
+    container.bodyGraphics.scaleY = wingScale;
+    
+    // Shadow pulsing
+    container.shadow.setScale(1 + Math.sin(wingTime) * 0.05);
+    
+    // Emit particles if moving fast or just for effect
+    if (Math.random() < 0.1) {
+        emitFeather(container.scene, head.X, head.Y, data.Color);
+    }
+}
+
+function emitFeather(scene, x, y, colorStr) {
+    const color = Phaser.Display.Color.HexStringToColor(colorStr).color;
+    const feather = scene.add.graphics();
+    feather.fillStyle(color, 0.6);
+    feather.fillEllipse(0, 0, 4, 8);
+    feather.setPosition(x, y);
+    feather.setDepth(-1);
+    
+    scene.tweens.add({
+        targets: feather,
+        x: x + (Math.random() - 0.5) * 40,
+        y: y + (Math.random() - 0.5) * 40,
+        alpha: 0,
+        angle: 360,
+        duration: 1000,
+        onComplete: () => feather.destroy()
     });
-
-    if (data && data.Feathers) {
-        data.Feathers.forEach(fData => {
-            if (!fData || !fData.Id) return;
-            
-            if (!feathers[fData.Id]) {
-                let color = 0xf1c40f;
-                let radius = 6;
-                if (fData.Type === 0) {
-                    const foodColors = [0x00ffa3, 0x00d1ff, 0xfff500, 0xff005c, 0xff9100, 0x00ff22];
-                    color = foodColors[Math.floor(Math.random() * foodColors.length)];
-                } else if (fData.Type === 1) {
-                    color = 0xffffff;
-                    radius = 8;
-                } else if (fData.Type === 2) {
-                    color = 0xff4d6d;
-                    radius = 5;
-                }
-                
-                const feather = scene.add.circle(fData.X, fData.Y, radius * fData.Value, color);
-                feather.setStrokeStyle(1, 0xffffff, 0.3);
-                feathers[fData.Id] = feather;
-
-                scene.tweens.add({
-                    targets: feather,
-                    scale: 1.2,
-                    duration: 800 + Math.random() * 400,
-                    yoyo: true,
-                    repeat: -1,
-                    ease: 'Sine.easeInOut'
-                });
-            }
-        });
-    }
 }
 
 function updateLeaderboard(entries) {
-    const list = document.getElementById('leaderboard');
-    list.innerHTML = entries.map((e, i) => `<div>${i+1}. ${e.Name}: ${Math.floor(e.Score)}</div>`).join('');
+    const lb = document.getElementById('leaderboard');
+    if (!lb) return;
+    lb.innerHTML = entries.map((e, i) => `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span style="color: ${i === 0 ? '#ffd700' : '#fff'}">${i + 1}. ${e.Name}</span>
+            <span style="font-weight: bold">${e.Score}</span>
+        </div>
+    `).join('');
 }
 
-let lastInputTime = 0;
-let lastInputX = 0;
-let lastInputY = 0;
-let lastInputBoosting = false;
-
 function update() {
-    if (!socket || socket.readyState !== WebSocket.OPEN || !playerId || !cam) return;
+    if (!isAuthorized || !socket) return;
 
-    try {
-        const pointer = this.input.activePointer;
-        if (!pointer) return;
-        
-        const worldPoint = cam.getWorldPoint(pointer.x, pointer.y);
-        if (!worldPoint) return;
+    // Parallax Grid Effect
+    if (parallaxGrid) {
+        parallaxGrid.y -= 1.5; // Constant scroll up
+        if (parallaxGrid.y < -64) parallaxGrid.y = 0;
+    }
 
-        const isBoosting = (cursors && cursors.space && cursors.space.isDown) || pointer.isDown;
-
-        // Throttle input to 30 times per second or if significant change
-        const now = Date.now();
-        const dist = Phaser.Math.Distance.Between(lastInputX, lastInputY, worldPoint.x, worldPoint.y);
-        
-        if (now - lastInputTime > 33 || dist > 5 || isBoosting !== lastInputBoosting) {
-            socket.send(JSON.stringify({
-                Type: 'input',
-                TargetX: worldPoint.x,
-                TargetY: worldPoint.y,
-                IsBoosting: isBoosting
-            }));
-            
-            lastInputTime = now;
-            lastInputX = worldPoint.x;
-            lastInputY = worldPoint.y;
-            lastInputBoosting = isBoosting;
-        }
-    } catch (err) {
-        console.error('Update error:', err);
+    // Send input based on mouse position relative to camera center
+    const pointer = this.input.activePointer;
+    const angle = Phaser.Math.Angle.Between(
+        window.innerWidth / 2, window.innerHeight / 2,
+        pointer.x, pointer.y
+    );
+    
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+            Type: 'move',
+            Data: { angle: angle }
+        }));
     }
 }
 
 window.addEventListener('resize', () => {
-    if (game && game.scale) {
-        game.scale.resize(window.innerWidth, window.innerHeight);
+    game.scale.resize(window.innerWidth, window.innerHeight);
+    if (parallaxGrid) {
+        parallaxGrid.setSize(window.innerWidth * 2, window.innerHeight * 2);
     }
-    
-    const scene = (game && game.scene && game.scene.scenes) ? game.scene.scenes[0] : null;
-    if (scene && scene.miniMapContainer) {
-        const miniMapSize = 200;
-        const miniMapMargin = 20;
-        scene.miniMapContainer.setPosition(miniMapMargin, scene.scale.height - miniMapSize - miniMapMargin);
-    }
-})};
+});

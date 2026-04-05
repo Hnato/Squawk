@@ -30,6 +30,22 @@ public class WebSocketServer
         
         _updateTimer = new System.Timers.Timer(50); // 20 FPS updates
         _updateTimer.Elapsed += (s, e) => BroadcastState();
+
+        _engine.OnPlayerDeath += (player, reason) => {
+            if (!player.IsBot)
+            {
+                // Find client Guid for this player
+                var client = _server?.ListClients().FirstOrDefault(c => c.IpPort == player.Id);
+                if (client != null)
+                {
+                    Send(client.Guid, new WsMessage { 
+                        Type = "death", 
+                        Data = JsonSerializer.SerializeToElement(new { reason }) 
+                    });
+                }
+            }
+            OnLog?.Invoke($"Player {player.Name} died: {reason}");
+        };
     }
 
     public void Start()
@@ -51,9 +67,8 @@ public class WebSocketServer
                 {
                     try 
                     {
-                        // Try localhost first, then 127.0.0.1
-                        string host = (i % 2 == 0) ? "localhost" : "127.0.0.1";
-                        _server = new WatsonWsServer(host, wsPort, false);
+                        // Use "0.0.0.0" to listen on all interfaces
+                        _server = new WatsonWsServer("0.0.0.0", wsPort, false);
                         _server.ClientConnected += (s, e) => OnLog?.Invoke($"Client connected: {e.Client.IpPort}");
                         _server.ClientDisconnected += (s, e) => {
                             _engine.RemovePlayer(e.Client.IpPort);
@@ -62,7 +77,7 @@ public class WebSocketServer
                         _server.MessageReceived += OnMessageReceived;
                         _server.Start();
                         wsStarted = true;
-                        OnLog?.Invoke($"WebSocket server started on {host}:{wsPort}");
+                        OnLog?.Invoke($"WebSocket server started on 0.0.0.0:{wsPort}");
                         break;
                     }
                     catch (Exception ex)
@@ -85,12 +100,12 @@ public class WebSocketServer
                 {
                     try 
                     {
-                        string host = (i % 2 == 0) ? "localhost" : "127.0.0.1";
                         _httpListener.Prefixes.Clear();
-                        _httpListener.Prefixes.Add($"http://{host}:{webPort}/");
+                        // Use "+" or "*" to listen on all hostnames/IPs
+                        _httpListener.Prefixes.Add($"http://*:{webPort}/");
                         _httpListener.Start();
                         webStarted = true;
-                        OnLog?.Invoke($"Web server started on {host}:{webPort}");
+                        OnLog?.Invoke($"Web server started on *:{webPort}");
                         break;
                     }
                     catch (Exception ex)
@@ -272,21 +287,44 @@ public class WebSocketServer
 
     private void HandleAuth(Guid clientGuid, JsonElement data)
     {
-        var username = data.GetProperty("username").GetString() ?? "";
-        var password = data.GetProperty("password").GetString() ?? "";
-        var isRegister = data.GetProperty("register").GetBoolean();
+        string username = "";
+        string password = "";
+        bool isRegister = false;
+
+        try 
+        {
+            username = data.GetProperty("username").GetString() ?? "";
+            password = data.GetProperty("password").GetString() ?? "";
+            isRegister = data.GetProperty("register").GetBoolean();
+        }
+        catch (Exception ex)
+        {
+            Send(clientGuid, new WsMessage { Type = "auth_response", Data = JsonSerializer.SerializeToElement(new { success = false, message = "Błędne dane wejściowe" }) });
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(username) || username.Length < 3)
+        {
+            Send(clientGuid, new WsMessage { Type = "auth_response", Data = JsonSerializer.SerializeToElement(new { success = false, message = "Nazwa użytkownika musi mieć min. 3 znaki" }) });
+            return;
+        }
 
         bool success = false;
+        string message = "";
+
         if (isRegister)
         {
             success = _db.RegisterUser(username, password);
+            message = success ? "Zarejestrowano pomyślnie" : "Użytkownik już istnieje lub błąd bazy";
         }
         else
         {
-            success = _db.AuthenticateUser(username, password) != null;
+            var user = _db.AuthenticateUser(username, password);
+            success = user != null;
+            message = success ? "Zalogowano" : "Błędne hasło lub użytkownik nie istnieje";
         }
 
-        Send(clientGuid, new WsMessage { Type = "auth_response", Data = JsonSerializer.SerializeToElement(new { success }) });
+        Send(clientGuid, new WsMessage { Type = "auth_response", Data = JsonSerializer.SerializeToElement(new { success, message }) });
     }
 
     private void HandleJoin(Guid clientGuid, string ipPort, JsonElement data)

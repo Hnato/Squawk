@@ -48,86 +48,142 @@
             color: #e9ecef;
             padding-bottom: 4px;
         }
-        #login {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(18, 18, 20, 0.8);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            padding: 48px;
-            border-radius: 32px;
-            text-align: center;
-            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            width: 320px;
+        #auth-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
         }
-        #login h1 {
-            margin-top: 0;
-            margin-bottom: 32px;
-            font-size: 42px;
-            font-weight: 800;
+        .modal-content {
+            background: #1a1a1c;
+            padding: 40px;
+            border-radius: 24px;
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        .modal-content h2 {
+            margin-bottom: 24px;
             background: linear-gradient(135deg, #00ff88 0%, #00bdff 100%);
-            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            letter-spacing: -1px;
+            font-size: 28px;
         }
-        #login input {
-            padding: 16px 20px;
-            margin-bottom: 24px;
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        .form-group input {
             width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 14px;
             color: #fff;
-            font-size: 16px;
-            outline: none;
-            text-align: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             box-sizing: border-box;
+            transition: border-color 0.3s;
         }
-        #login input:focus {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: rgba(0, 255, 136, 0.5);
-            box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.1);
+        .form-group input:focus {
+            border-color: #00ff88;
+            outline: none;
         }
-        #login button {
-            padding: 16px 32px;
-            width: 100%;
-            background: #fff;
-            color: #000;
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
             border: none;
-            border-radius: 14px;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 16px;
-            font-weight: 700;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.2s, opacity 0.2s;
         }
-        #login button:hover {
+        .btn-primary {
+            background: linear-gradient(135deg, #00ff88 0%, #00bdff 100%);
+            color: #000;
+        }
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.2);
-            background: #f0f0f0;
+            opacity: 0.9;
         }
-        #login button:active {
-            transform: translateY(0);
+        .switch-auth {
+            margin-top: 20px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        .switch-auth a {
+            color: #00ff88;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        #error-msg {
+            color: #ff4d4d;
+            font-size: 13px;
+            margin-top: 10px;
+            height: 18px;
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
 <body>
     <div id="game-container"></div>
     <div id="ui">
+        <div id="stats" style="margin-bottom: 15px; font-size: 14px; font-weight: bold; color: #00ff88;">
+            Gracze: <span id="player-count">0</span>
+        </div>
         <h3>Ranking</h3>
         <div id="leaderboard"></div>
     </div>
-    <div id="login">
-        <h1>Squawk</h1>
-        <input type="text" id="playerName" placeholder="Twoje imię" maxlength="15">
-        <br>
-        <button id="startBtn">Graj</button>
+
+    <div id="minimap-container" style="position: absolute; bottom: 20px; left: 20px; width: 200px; height: 200px; background: rgba(0,0,0,0.8); border: 2px solid #00ff88; border-radius: 12px; overflow: hidden; pointer-events: none; z-index: 1000; box-shadow: 0 0 20px rgba(0,255,136,0.3);">
+        <canvas id="minimap" width="200" height="200"></canvas>
+        <div style="position: absolute; bottom: 5px; width: 100%; text-align: center; color: #00ff88; font-size: 10px; font-family: sans-serif; opacity: 0.6;">TAB - Przełącz</div>
     </div>
+
+    <div id="auth-modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Logowanie</h2>
+            <div class="form-group">
+                <label>Nazwa użytkownika</label>
+                <input type="text" id="username" placeholder="Twoja papuga...">
+            </div>
+            <div class="form-group">
+                <label>Hasło</label>
+                <input type="password" id="password" placeholder="••••••••">
+            </div>
+            <div id="error-msg"></div>
+            <div class="modal-buttons">
+                <button id="auth-btn" class="btn btn-primary">Zaloguj się</button>
+            </div>
+            <div class="switch-auth">
+                <span id="switch-text">Nie masz konta?</span> 
+                <a id="switch-link">Zarejestruj się</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
