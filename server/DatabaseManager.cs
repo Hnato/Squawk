@@ -22,8 +22,36 @@ public class DatabaseManager
             CREATE TABLE IF NOT EXISTS Users (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Username TEXT UNIQUE NOT NULL,
-                PasswordHash TEXT NOT NULL
+                PasswordHash TEXT NOT NULL,
+                LastPosX REAL DEFAULT 1500,
+                LastPosY REAL DEFAULT 1500,
+                LastScore INTEGER DEFAULT 0
             )");
+    }
+
+    public void SavePlayerState(string username, float x, float y, int score)
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        connection.Execute(@"
+            UPDATE Users 
+            SET LastPosX = @x, LastPosY = @y, LastScore = @score 
+            WHERE Username = @username",
+            new { username, x, y, score });
+    }
+
+    public (float x, float y, int score) GetPlayerState(string username)
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        var state = connection.QueryFirstOrDefault(@"
+            SELECT LastPosX as x, LastPosY as y, LastScore as score 
+            FROM Users WHERE Username = @username",
+            new { username });
+        
+        if (state != null)
+        {
+            return ( (float)state.x, (float)state.y, (int)state.score );
+        }
+        return (1500f, 1500f, 0);
     }
 
     public bool RegisterUser(string username, string password)
