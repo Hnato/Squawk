@@ -15,7 +15,7 @@ public interface IGameEngine
     void Start();
     void Stop();
     void Tick();
-    void AddPlayer(string id, string name);
+    void AddPlayer(string id, string name, float? startX = null, float? startY = null, int initialScore = 0);
     void RemovePlayer(string id);
     void UpdatePlayerAngle(string id, float angle);
 }
@@ -259,7 +259,26 @@ public class GameEngine : IGameEngine
         // Process removals
         foreach (var id in playersToRemove)
         {
-            _players.TryRemove(id, out _);
+            if (_players.TryRemove(id, out var deadPlayer))
+            {
+                lock (_foodLock)
+                {
+                    // Leave food behind for others to eat
+                    foreach (var segment in deadPlayer.Body)
+                    {
+                        _foodItems.Add(new Food
+                        {
+                            Id = _random.Next(1000000),
+                            Position = segment,
+                            Value = 5,
+                            Color = deadPlayer.Color,
+                            IsPowerUp = false,
+                            Type = "food"
+                        });
+                    }
+                }
+                OnLog?.Invoke($"Player {deadPlayer.Name} removed and converted to food.");
+            }
         }
     }
 
@@ -291,7 +310,7 @@ public class GameEngine : IGameEngine
         _players.TryAdd(botId, bot);
     }
 
-    public void AddPlayer(string id, string name)
+    public void AddPlayer(string id, string name, float? startX = null, float? startY = null, int initialScore = 0)
     {
         if (_players.ContainsKey(id)) return;
 
@@ -302,16 +321,30 @@ public class GameEngine : IGameEngine
             IsBot = false,
             Angle = (float)(_random.NextDouble() * Math.PI * 2),
             Color = GetRandomParrotColor(),
-            Score = 0
+            Score = initialScore
         };
         
-        Vector2 startPos = FindSafeSpawn(100f);
+        Vector2 startPos;
+        if (startX.HasValue && startY.HasValue)
+        {
+            startPos = new Vector2(startX.Value, startY.Value);
+            // Safety check: ensure loaded position is within map bounds
+            if (Vector2.Distance(startPos, new Vector2(_mapRadius, _mapRadius)) > _mapRadius)
+            {
+                startPos = FindSafeSpawn(100f);
+            }
+        }
+        else
+        {
+            startPos = FindSafeSpawn(100f);
+        }
         
-        for (int i = 0; i < 10; i++) player.Body.Add(startPos);
+        // Initial body segments
+        for (int i = 0; i < 10 + initialScore / 2; i++) player.Body.Add(startPos);
         
         if (_players.TryAdd(id, player))
         {
-            OnLog?.Invoke($"Player {name} joined at {startPos.X:F1}, {startPos.Y:F1}");
+            OnLog?.Invoke($"Player {name} spawned at {startPos.X:F1}, {startPos.Y:F1} with score {initialScore}");
         }
     }
 

@@ -3,6 +3,7 @@ using WatsonWebsocket;
 using SquawkServer.Models;
 using System.Net;
 using System.IO;
+using System.Collections.Concurrent;
 
 
 namespace SquawkServer;
@@ -18,6 +19,8 @@ public class WebSocketServer
     private HttpListener? _httpListener;
     private bool _isRunning = false;
     private readonly object _serverLock = new object();
+    private readonly ConcurrentDictionary<Guid, string> _authenticatedUsers = new();
+    private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = null };
 
     public event Action<string>? OnLog;
 
@@ -34,13 +37,20 @@ public class WebSocketServer
         _engine.OnPlayerDeath += (player, reason) => {
             if (!player.IsBot)
             {
+                // Save state on death (reset to center with 0 score)
+                var clientGuid = _authenticatedUsers.FirstOrDefault(x => x.Value == player.Name).Key;
+                if (clientGuid != default)
+                {
+                    _db.SavePlayerState(player.Name, 1500f, 1500f, 0);
+                }
+
                 // Find client Guid for this player
                 var client = _server?.ListClients().FirstOrDefault(c => c.IpPort == player.Id);
                 if (client != null)
                 {
                     Send(client.Guid, new WsMessage { 
                         Type = "death", 
-                        Data = JsonSerializer.SerializeToElement(new { reason }) 
+                        Data = JsonSerializer.SerializeToElement(new { reason }, _jsonOptions) 
                     });
                 }
             }
@@ -63,28 +73,59 @@ public class WebSocketServer
                 bool wsStarted = false;
                 Exception? lastWsEx = null;
 
-                for (int i = 0; i < 5; i++)
+                // Try up to 50 ports starting from _port
+                for (int i = 0; i < 50; i++)
                 {
                     try 
                     {
-                        // Use "0.0.0.0" to listen on all interfaces
-                        _server = new WatsonWsServer("0.0.0.0", wsPort, false);
-                        _server.ClientConnected += (s, e) => OnLog?.Invoke($"Client connected: {e.Client.IpPort}");
-                        _server.ClientDisconnected += (s, e) => {
-                            _engine.RemovePlayer(e.Client.IpPort);
-                            OnLog?.Invoke($"Client disconnected: {e.Client.IpPort}");
-                        };
-                        _server.MessageReceived += OnMessageReceived;
-                        _server.Start();
-                        wsStarted = true;
-                        OnLog?.Invoke($"WebSocket server started on 0.0.0.0:{wsPort}");
-                        break;
+                        string host = "0.0.0.0";
+                        try 
+                        {
+                            _server = new WatsonWsServer(host, wsPort, false);
+                            _server.ClientConnected += (s, e) => OnLog?.Invoke($"Client connected: {e.Client.IpPort}");
+                            _server.ClientDisconnected += (s, e) => {
+                                // Save state on disconnect
+                                if (_authenticatedUsers.TryRemove(e.Client.Guid, out var username))
+                                {
+                                    var player = _engine.Players.FirstOrDefault(p => p.Id == e.Client.IpPort);
+                                    if (player != null && player.Body.Count > 0)
+                                    {
+                                        var head = player.Body[0];
+                                        _db.SavePlayerState(username, head.X, head.Y, player.Score);
+                                    }
+                                }
+                                _engine.RemovePlayer(e.Client.IpPort);
+                                OnLog?.Invoke($"Client disconnected: {e.Client.IpPort}");
+                            };
+                            _server.MessageReceived += OnMessageReceived;
+                            _server.Start();
+                            wsStarted = true;
+                            OnLog?.Invoke($"WebSocket server started on {host}:{wsPort}");
+                            break;
+                        }
+                        catch (Exception ex) when (ex.Message.Contains("nie jest obsługiwane") || ex.Message.Contains("not supported") || ex.Message.Contains("Access is denied"))
+                        {
+                            // Fallback to localhost if 0.0.0.0 fails due to permissions
+                            host = "localhost";
+                            OnLog?.Invoke($"WS 0.0.0.0 failed, trying {host}:{wsPort}...");
+                            _server = new WatsonWsServer(host, wsPort, false);
+                            _server.ClientConnected += (s, e) => OnLog?.Invoke($"Client connected: {e.Client.IpPort}");
+                            _server.ClientDisconnected += (s, e) => {
+                                _engine.RemovePlayer(e.Client.IpPort);
+                                OnLog?.Invoke($"Client disconnected: {e.Client.IpPort}");
+                            };
+                            _server.MessageReceived += OnMessageReceived;
+                            _server.Start();
+                            wsStarted = true;
+                            OnLog?.Invoke($"WebSocket server started on {host}:{wsPort}");
+                            break;
+                        }
                     }
                     catch (Exception ex)
                     {
                         lastWsEx = ex;
                         OnLog?.Invoke($"WS attempt {i+1} (port {wsPort}) failed: {ex.Message}");
-                        wsPort++; 
+                        wsPort++; // Try next port
                     }
                 }
 
@@ -96,17 +137,31 @@ public class WebSocketServer
                 bool webStarted = false;
                 Exception? lastWebEx = null;
 
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < 50; i++)
                 {
                     try 
                     {
                         _httpListener.Prefixes.Clear();
-                        // Use "+" or "*" to listen on all hostnames/IPs
-                        _httpListener.Prefixes.Add($"http://*:{webPort}/");
-                        _httpListener.Start();
-                        webStarted = true;
-                        OnLog?.Invoke($"Web server started on *:{webPort}");
-                        break;
+                        try 
+                        {
+                            // Try global wildcard first
+                            _httpListener.Prefixes.Add($"http://*:{webPort}/");
+                            _httpListener.Start();
+                            webStarted = true;
+                            OnLog?.Invoke($"Web server started on *:{webPort}");
+                            break;
+                        }
+                        catch (Exception ex) when (ex.Message.Contains("nie jest obsługiwane") || ex.Message.Contains("not supported") || ex.Message.Contains("Access is denied"))
+                        {
+                            // Fallback to localhost wildcard or specific loopback
+                            OnLog?.Invoke($"Web global wildcard failed, trying localhost:{webPort}...");
+                            _httpListener.Prefixes.Clear();
+                            _httpListener.Prefixes.Add($"http://localhost:{webPort}/");
+                            _httpListener.Start();
+                            webStarted = true;
+                            OnLog?.Invoke($"Web server started on localhost:{webPort}");
+                            break;
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -299,13 +354,13 @@ public class WebSocketServer
         }
         catch (Exception ex)
         {
-            Send(clientGuid, new WsMessage { Type = "auth_response", Data = JsonSerializer.SerializeToElement(new { success = false, message = "Błędne dane wejściowe" }) });
+            Send(clientGuid, new WsMessage { Type = "auth_response", Data = JsonSerializer.SerializeToElement(new { success = false, message = "Błędne dane wejściowe" }, _jsonOptions) });
             return;
         }
 
         if (string.IsNullOrWhiteSpace(username) || username.Length < 3)
         {
-            Send(clientGuid, new WsMessage { Type = "auth_response", Data = JsonSerializer.SerializeToElement(new { success = false, message = "Nazwa użytkownika musi mieć min. 3 znaki" }) });
+            Send(clientGuid, new WsMessage { Type = "auth_response", Data = JsonSerializer.SerializeToElement(new { success = false, message = "Nazwa użytkownika musi mieć min. 3 znaki" }, _jsonOptions) });
             return;
         }
 
@@ -324,14 +379,27 @@ public class WebSocketServer
             message = success ? "Zalogowano" : "Błędne hasło lub użytkownik nie istnieje";
         }
 
-        Send(clientGuid, new WsMessage { Type = "auth_response", Data = JsonSerializer.SerializeToElement(new { success, message }) });
+        if (success)
+        {
+            _authenticatedUsers[clientGuid] = username;
+        }
+
+        Send(clientGuid, new WsMessage { Type = "auth_response", Data = JsonSerializer.SerializeToElement(new { success, message }, _jsonOptions) });
     }
 
     private void HandleJoin(Guid clientGuid, string ipPort, JsonElement data)
     {
-        var name = data.GetProperty("name").GetString() ?? "Player";
-        _engine.AddPlayer(ipPort, name);
-        Send(clientGuid, new WsMessage { Type = "joined", Data = JsonSerializer.SerializeToElement(new { id = ipPort }) });
+        if (_authenticatedUsers.TryGetValue(clientGuid, out var username))
+        {
+            var (x, y, score) = _db.GetPlayerState(username);
+            _engine.AddPlayer(ipPort, username, x, y, score);
+            // Consistently use uppercase Id to match the state update
+            Send(clientGuid, new WsMessage { Type = "joined", Data = JsonSerializer.SerializeToElement(new { Id = ipPort }, _jsonOptions) });
+        }
+        else
+        {
+            OnLog?.Invoke($"Unauthenticated join attempt from {ipPort}");
+        }
     }
 
     private void HandleMove(string ipPort, JsonElement data)
@@ -349,13 +417,27 @@ public class WebSocketServer
         var state = new
         {
             players = _engine.Players.Select(p => new {
-                p.Id, p.Name, p.Body, p.Angle, p.Score, p.Color, p.IsBot
+                Id = p.Id,
+                Name = p.Name,
+                Body = p.Body.Select(b => new { X = b.X, Y = b.Y }).ToList(),
+                Angle = p.Angle,
+                Score = p.Score,
+                Color = p.Color,
+                IsBot = p.IsBot
             }),
-            food = _engine.FoodItems,
-            leaderboard = _engine.Players.OrderByDescending(p => p.Score).Take(10).Select(p => new { p.Name, p.Score })
+            food = _engine.FoodItems.Select(f => new {
+                Id = f.Id,
+                Position = new { X = f.Position.X, Y = f.Position.Y },
+                Value = f.Value,
+                Color = f.Color,
+                IsPowerUp = f.IsPowerUp,
+                Type = f.Type
+            }),
+            leaderboard = _engine.Players.OrderByDescending(p => p.Score).Take(10).Select(p => new { Name = p.Name, Score = p.Score })
         };
 
-        var json = JsonSerializer.Serialize(new WsMessage { Type = "state", Data = JsonSerializer.SerializeToElement(state) });
+        var json = JsonSerializer.Serialize(new WsMessage { Type = "state", Data = JsonSerializer.SerializeToElement(state, _jsonOptions) }, _jsonOptions);
+        
         foreach (var client in _server.ListClients())
         {
             _server.SendAsync(client.Guid, json);
@@ -364,7 +446,7 @@ public class WebSocketServer
 
     private void Send(Guid clientGuid, WsMessage msg)
     {
-        _server?.SendAsync(clientGuid, JsonSerializer.Serialize(msg));
+        _server?.SendAsync(clientGuid, JsonSerializer.Serialize(msg, _jsonOptions));
     }
 
     private class WsMessage

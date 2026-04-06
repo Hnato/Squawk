@@ -39,10 +39,10 @@ function preload() {
 function create() {
     cam = this.cameras.main;
     
-    // 0. Terrain Textures (drawn once)
-    terrainGraphics = this.add.graphics();
-    terrainGraphics.setDepth(-8);
-    drawTerrain(terrainGraphics);
+    // 1. Gray Square Grid on Black Background
+    // We create a static grid covering the entire map
+    const grid = this.add.grid(mapRadius, mapRadius, mapRadius * 2, mapRadius * 2, 64, 64, 0x000000, 1, 0x444444, 0.2);
+    grid.setDepth(-10);
 
     foodGraphics = this.add.graphics();
     foodGraphics.setDepth(-3);
@@ -63,44 +63,16 @@ function create() {
         }
     });
 
-    // 1. Dynamic Parallax Grid (Scrolling background)
-    parallaxGrid = this.add.grid(0, 0, window.innerWidth * 2, window.innerHeight * 2, 64, 64, 0x000000, 0, 0x00ff88, 0.05);
-    parallaxGrid.setScrollFactor(0);
-    parallaxGrid.setDepth(-10);
-
-    // 2. Circular Game Board
-    const bg = this.add.graphics();
-    bg.setDepth(-9);
-    bg.fillStyle(0x050505, 1);
-    bg.fillCircle(mapRadius, mapRadius, mapRadius);
-    
-    // Thick green boundary line
+    // 2. Circular Game Board Boundary
     const border = this.add.graphics();
     border.setDepth(-4);
     border.lineStyle(20, 0x00ff00, 1); // Thick green line
     border.strokeCircle(mapRadius, mapRadius, mapRadius);
 
-    this.mapGraphics = { bg, border };
+    this.mapGraphics = { grid, border };
     cam.centerOn(mapRadius, mapRadius);
 
     setupAuthUI();
-}
-
-function drawTerrain(graphics) {
-    // Random terrain patches (grass, sand, rocks)
-    const patchCount = 100;
-    const colors = [0x2d5a27, 0xc2b280, 0x4a4a4a]; // Green, Sand, Rock
-    
-    for (let i = 0; i < patchCount; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const dist = Math.random() * (mapRadius - 100);
-        const x = mapRadius + Math.cos(angle) * dist;
-        const y = mapRadius + Math.sin(angle) * dist;
-        const size = 50 + Math.random() * 150;
-        
-        graphics.fillStyle(colors[Math.floor(Math.random() * colors.length)] || colors[0], 0.1);
-        graphics.fillEllipse(x, y, size, size * 0.7);
-    }
 }
 
 function setupAuthUI() {
@@ -146,9 +118,12 @@ function setupAuthUI() {
 }
 
 function connectToServer(username, password, isRegister) {
-    const wsPort = window.location.port ? parseInt(window.location.port) : 5005; 
+    // WebSocket is usually on port - 1 if served via HttpListener in this app
+    const currentPort = window.location.port ? parseInt(window.location.port) : 5006;
+    const wsPort = currentPort - 1;
     const wsHost = window.location.hostname || '127.0.0.1';
     
+    console.log(`Connecting to WebSocket on ${wsHost}:${wsPort}...`);
     if (socket) socket.close();
     
     socket = new WebSocket(`ws://${wsHost}:${wsPort}`);
@@ -200,8 +175,8 @@ function handleServerMessage(msg, username) {
             break;
 
         case 'joined':
-            playerId = msg.Data.id;
-            console.log('Joined with ID:', playerId);
+            playerId = msg.Data.Id; // Changed to uppercase Id to match server
+            console.log('Spawning successful. Joined with ID:', playerId);
             break;
 
         case 'state':
@@ -209,7 +184,7 @@ function handleServerMessage(msg, username) {
             break;
 
         case 'death':
-            console.log('Player died:', msg.Data.reason);
+            console.warn('Player died:', msg.Data.reason);
             isAuthorized = false;
             playerId = null;
             document.getElementById('auth-modal').style.display = 'flex';
@@ -228,9 +203,10 @@ function updateGameState(data) {
         playerCountEl.textContent = data.players.length;
     }
 
-    // Update Players (Parrots)
+    // Update Players (Parrots/Snakes)
     data.players.forEach(p => {
         if (!players[p.Id]) {
+            console.log('NEW PLAYER/BOT:', p.Name, 'ID:', p.Id, 'LOCAL:', p.Id === playerId);
             players[p.Id] = createParrot(scene, p);
         }
         updateParrot(players[p.Id], p);
@@ -240,33 +216,39 @@ function updateGameState(data) {
     const activeIds = data.players.map(p => p.Id);
     Object.keys(players).forEach(id => {
         if (!activeIds.includes(id)) {
-            players[id].destroy();
-            delete players[id];
+            console.log('REMOVING:', id);
+            if (players[id]) {
+                players[id].destroy();
+                delete players[id];
+            }
         }
     });
 
     // Camera follow local player
-    if (playerId && players[playerId]) {
-        const player = players[playerId];
-        // Smoothly center the camera
-        cam.scrollX = player.x - cam.width / 2;
-        cam.scrollY = player.y - cam.height / 2;
-    } else if (playerId) {
-        // Fallback for initial state before player is created
-        cam.centerOn(mapRadius, mapRadius);
+    if (playerId) {
+        const localPlayer = players[playerId];
+        if (localPlayer) {
+            const localPlayerData = data.players.find(p => p.Id === playerId);
+            if (localPlayerData && localPlayerData.Body && localPlayerData.Body.length > 0) {
+                const head = localPlayerData.Body[0];
+                cam.centerOn(head.X, head.Y);
+            }
+        } else {
+            // Player exists in system but not in current state yet
+            cam.centerOn(mapRadius, mapRadius);
+        }
     }
 
     // Update Leaderboard
     updateLeaderboard(data.leaderboard);
 
-    // Draw Food and Power-ups
+    // Draw Food
     foodGraphics.clear();
     data.food.forEach(f => {
         if (f.Value > 0) {
             const color = Phaser.Display.Color.HexStringToColor(f.Color).color;
             foodGraphics.fillStyle(color, 1);
             if (f.IsPowerUp) {
-                // Draw star-like shape for power-ups
                 drawStar(foodGraphics, f.Position.X, f.Position.Y, 5, 12, 6);
             } else {
                 foodGraphics.fillCircle(f.Position.X, f.Position.Y, 6);
@@ -274,7 +256,6 @@ function updateGameState(data) {
         }
     });
 
-    // Draw Minimap
     drawMinimap(data.players);
 }
 
@@ -337,76 +318,104 @@ function drawStar(graphics, x, y, points, outerRadius, innerRadius) {
 }
 
 function createParrot(scene, data) {
-    const container = scene.add.container(data.Body[0].X, data.Body[0].Y);
+    // Create container at (0,0) initially, will be moved in updateParrot
+    const container = scene.add.container(0, 0);
+    container.setDepth(5);
     
-    // Shadow under parrot
-    const shadow = scene.add.ellipse(0, 15, 30, 15, 0x000000, 0.3);
-    container.add(shadow);
+    // 1. Body segments graphics object
+    const bodySegments = scene.add.graphics();
+    bodySegments.setDepth(1);
+    container.add(bodySegments);
 
-    // Parrot Body Design
-    const body = scene.add.graphics();
-    const color = Phaser.Display.Color.HexStringToColor(data.Color).color;
-    
-    // Feathers (body)
-    body.fillStyle(color, 1);
-    body.fillEllipse(0, 0, 40, 25); 
-    
-    // Wings with feather detail
-    body.fillStyle(color, 0.8);
-    body.fillEllipse(-5, -12, 22, 12);
-    body.fillEllipse(-5, 12, 22, 12);
-    
-    // Head
-    body.fillStyle(color, 1);
-    body.fillCircle(15, 0, 14);
-    
-    // Eye
-    body.fillStyle(0xffffff, 1);
-    body.fillCircle(20, -4, 4);
-    body.fillStyle(0x000000, 1);
-    body.fillCircle(21, -4, 2);
-    
-    // Beak
-    body.fillStyle(0xffd700, 1);
-    body.fillTriangle(25, -6, 25, 6, 38, 0);
+    // 2. Head graphics object (will be at 0,0 relative to container)
+    const headGraphics = scene.add.graphics();
+    headGraphics.setDepth(2);
+    container.add(headGraphics);
 
-    container.add(body);
-    
-    // Updated Font Design
-    const nameText = scene.add.text(0, -40, data.Name, { 
+    // 3. Name Text (above head)
+    const nameText = scene.add.text(0, -40, data.Name, {
         fontSize: '14px', 
         fontFamily: 'Arial, sans-serif',
-        fill: '#fff',
+        fill: '#ffffff',
         fontStyle: 'bold',
-        stroke: '#000',
-        strokeThickness: 2,
-        shadow: { offsetX: 2, offsetY: 2, color: '#000', blur: 0, stroke: true, fill: true }
+        stroke: '#000000',
+        strokeThickness: 3,
+        shadow: { offsetX: 2, offsetY: 2, color: '#000000', blur: 2, fill: true }
     }).setOrigin(0.5);
+    nameText.setDepth(10);
     container.add(nameText);
     
-    container.bodyGraphics = body;
+    container.bodySegments = bodySegments;
+    container.headGraphics = headGraphics;
     container.nameText = nameText;
-    container.shadow = shadow;
     
     return container;
 }
 
 function updateParrot(container, data) {
+    if (!data.Body || data.Body.length === 0) return;
+    
     const head = data.Body[0];
+    const color = Phaser.Display.Color.HexStringToColor(data.Color).color;
+    
+    // Move the WHOLE container to the head position
     container.setPosition(head.X, head.Y);
-    container.setRotation(data.Angle);
-    container.nameText.setRotation(-data.Angle); // Keep name upright
     
-    // Animated wings and shadow effect
-    const wingTime = Date.now() / 100;
-    const wingScale = 1 + Math.sin(wingTime) * 0.15;
-    container.bodyGraphics.scaleY = wingScale;
+    // Clear and redraw body relative to head (container)
+    container.bodySegments.clear();
     
-    // Shadow pulsing
-    container.shadow.setScale(1 + Math.sin(wingTime) * 0.05);
+    // Draw body segments relative to head (head is at 0,0 in container)
+    for (let i = data.Body.length - 1; i >= 0; i--) {
+        const seg = data.Body[i];
+        const alpha = 1 - (i / data.Body.length) * 0.4;
+        const radius = 12 - (i / data.Body.length) * 4;
+        
+        // Coordinates relative to head (container)
+        const relX = seg.X - head.X;
+        const relY = seg.Y - head.Y;
+        
+        container.bodySegments.fillStyle(color, alpha);
+        container.bodySegments.fillCircle(relX, relY, radius);
+        
+        if (i === 0) {
+            container.bodySegments.lineStyle(2, 0xffffff, 0.5);
+            container.bodySegments.strokeCircle(0, 0, radius + 2);
+        }
+    }
+
+    // Redraw head face (parrot) - head is at 0,0 relative to container
+    container.headGraphics.clear();
+    container.headGraphics.setRotation(data.Angle);
+
+    // Face shadow
+    container.headGraphics.fillStyle(0x000000, 0.2);
+    container.headGraphics.fillEllipse(0, 10, 25, 10);
+
+    // Face/Head circle
+    container.headGraphics.fillStyle(color, 1);
+    container.headGraphics.fillCircle(12, 0, 14);
     
-    // Emit particles if moving fast or just for effect
-    if (Math.random() < 0.1) {
+    // Animated wings
+    const wingTime = Date.now() / 150;
+    const wingAngle = Math.sin(wingTime) * 0.3;
+    container.headGraphics.fillStyle(color, 0.9);
+    container.headGraphics.fillEllipse(-2, -10, 20, 10, wingAngle);
+    container.headGraphics.fillEllipse(-2, 10, 20, 10, -wingAngle);
+    
+    // Eye
+    container.headGraphics.fillStyle(0xffffff, 1);
+    container.headGraphics.fillCircle(16, -5, 4);
+    container.headGraphics.fillStyle(0x000000, 1);
+    container.headGraphics.fillCircle(17, -5, 2);
+    
+    // Beak
+    container.headGraphics.fillStyle(0xffa500, 1);
+    container.headGraphics.fillTriangle(22, -6, 22, 6, 35, 0);
+
+    // Name text stays at 0,-40 relative to container (head)
+    
+    // Particles - draw feathers in world coordinates
+    if (Math.random() < 0.05) {
         emitFeather(container.scene, head.X, head.Y, data.Color);
     }
 }
