@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "dpzmN+/Kt2o=",
+  "dgSpecHash": "MvtHXcJ4xzM=",
   "success": true,
-  "projectFilePath": "C:\\Users\\user\\Music\\Squawk\\Git relase\\server\\SquawkTests\\SquawkTests.csproj",
+  "projectFilePath": "C:\\Users\\user\\Music\\Squawk\\server\\SquawkTests\\SquawkTests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\user\\.nuget\\packages\\bcrypt.net-next\\4.1.0\\bcrypt.net-next.4.1.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\coverlet.collector\\6.0.4\\coverlet.collector.6.0.4.nupkg.sha512",

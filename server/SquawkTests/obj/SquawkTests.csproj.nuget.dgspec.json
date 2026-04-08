@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\user\\Music\\Squawk\\Git relase\\server\\SquawkTests\\SquawkTests.csproj": {}
+    "C:\\Users\\user\\Music\\Squawk\\server\\SquawkTests\\SquawkTests.csproj": {}
   },
   "projects": {
-    "C:\\Users\\user\\Music\\Squawk\\Git relase\\server\\SquawkServer.csproj": {
+    "C:\\Users\\user\\Music\\Squawk\\server\\SquawkServer.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\user\\Music\\Squawk\\Git relase\\server\\SquawkServer.csproj",
+        "projectUniqueName": "C:\\Users\\user\\Music\\Squawk\\server\\SquawkServer.csproj",
         "projectName": "SquawkServer",
-        "projectPath": "C:\\Users\\user\\Music\\Squawk\\Git relase\\server\\SquawkServer.csproj",
+        "projectPath": "C:\\Users\\user\\Music\\Squawk\\server\\SquawkServer.csproj",
         "packagesPath": "C:\\Users\\user\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\user\\Music\\Squawk\\Git relase\\server\\obj\\",
+        "outputPath": "C:\\Users\\user\\Music\\Squawk\\server\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\user\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -401,14 +401,14 @@
         }
       }
     },
-    "C:\\Users\\user\\Music\\Squawk\\Git relase\\server\\SquawkTests\\SquawkTests.csproj": {
+    "C:\\Users\\user\\Music\\Squawk\\server\\SquawkTests\\SquawkTests.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\user\\Music\\Squawk\\Git relase\\server\\SquawkTests\\SquawkTests.csproj",
+        "projectUniqueName": "C:\\Users\\user\\Music\\Squawk\\server\\SquawkTests\\SquawkTests.csproj",
         "projectName": "SquawkTests",
-        "projectPath": "C:\\Users\\user\\Music\\Squawk\\Git relase\\server\\SquawkTests\\SquawkTests.csproj",
+        "projectPath": "C:\\Users\\user\\Music\\Squawk\\server\\SquawkTests\\SquawkTests.csproj",
         "packagesPath": "C:\\Users\\user\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\user\\Music\\Squawk\\Git relase\\server\\SquawkTests\\obj\\",
+        "outputPath": "C:\\Users\\user\\Music\\Squawk\\server\\SquawkTests\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\user\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -424,8 +424,8 @@
             "framework": "net11.0-windows7.0",
             "targetAlias": "net11.0-windows",
             "projectReferences": {
-              "C:\\Users\\user\\Music\\Squawk\\Git relase\\server\\SquawkServer.csproj": {
-                "projectPath": "C:\\Users\\user\\Music\\Squawk\\Git relase\\server\\SquawkServer.csproj"
+              "C:\\Users\\user\\Music\\Squawk\\server\\SquawkServer.csproj": {
+                "projectPath": "C:\\Users\\user\\Music\\Squawk\\server\\SquawkServer.csproj"
               }
             }
           }

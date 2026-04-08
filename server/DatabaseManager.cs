@@ -4,13 +4,20 @@ using SquawkServer.Models;
 using BCrypt.Net;
 namespace SquawkServer;
 
-public class DatabaseManager
+public class DatabaseManager(string dbPath = "squawk.db")
 {
-    private readonly string _connectionString;
+    private readonly string _connectionString = $"Data Source={dbPath};";
 
-    public DatabaseManager(string dbPath = "squawk.db")
+    static DatabaseManager()
     {
-        _connectionString = $"Data Source={dbPath};";
+        // One-time initialization if needed
+    }
+
+    private bool _initialized = false;
+    private void EnsureInitialized()
+    {
+        if (_initialized) return;
+        _initialized = true;
         Initialize();
     }
 

@@ -18,9 +18,9 @@ public class WebSocketServer
     private readonly int _port;
     private HttpListener? _httpListener;
     private bool _isRunning = false;
-    private readonly object _serverLock = new object();
-    private readonly ConcurrentDictionary<Guid, string> _authenticatedUsers = new();
-    private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = null };
+    private readonly System.Threading.Lock _serverLock = new();
+    private readonly ConcurrentDictionary<Guid, string> _authenticatedUsers = [];
+    private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNamingPolicy = null };
 
     public event Action<string>? OnLog;
 
@@ -367,7 +367,7 @@ public class WebSocketServer
             password = data.GetProperty("password").GetString() ?? "";
             isRegister = data.GetProperty("register").GetBoolean();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             Send(clientGuid, new WsMessage { Type = "auth_response", Data = JsonSerializer.SerializeToElement(new { success = false, message = "Błędne dane wejściowe" }, _jsonOptions) });
             return;

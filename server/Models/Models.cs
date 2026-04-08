@@ -6,7 +6,7 @@ public class Player
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public List<Vector2> Body { get; set; } = new();
+    public List<Vector2> Body { get; set; } = [];
     public float Angle { get; set; }
     public float Speed { get; set; } = 3.0f;
     public int Score { get; set; }

@@ -23,14 +23,14 @@ public interface IGameEngine
 
 public class GameEngine : IGameEngine
 {
-    private readonly ConcurrentDictionary<string, Player> _players = new();
-    private List<Food> _foodItems = new();
-    private readonly object _foodLock = new();
+    private readonly ConcurrentDictionary<string, Player> _players = [];
+    private List<Food> _foodItems = [];
+    private readonly System.Threading.Lock _foodLock = new();
     
     public IReadOnlyCollection<Player> Players => _players.Values.ToList().AsReadOnly();
     public ConcurrentDictionary<string, Player> InternalPlayerMap => _players; // For tests only
     public List<Food> InternalFoodList => _foodItems; // For tests only
-    public object InternalFoodLock => _foodLock; // For tests only
+    public System.Threading.Lock InternalFoodLock => _foodLock; // For tests only
     public ConcurrentDictionary<int, DateTime> InternalRespawnQueue => _respawnQueue; // For tests only
     public List<Food> FoodItems 
     {
@@ -136,8 +136,7 @@ public class GameEngine : IGameEngine
                 // Spacing check
                 bool tooClose = false;
                 foreach (var f in _foodItems)
-                {
-                    if (Vector2.DistanceSquared(position, f.Position) < 225) // Reduced from 400 to 225 (15 units)
+                {                    if (Vector2.DistanceSquared(position, f.Position) < 225) // Reduced from 400 to 225 (15 units)
                     {
                         tooClose = true;
                         break;
@@ -389,8 +388,7 @@ public class GameEngine : IGameEngine
             foreach (var other in playersSnapshot)
             {
                 if (other.IsDead) continue;
-                // Increased safety for self-collision (must be larger than initial length of 15)
-                int startIdx = (other.Id == player.Id) ? 20 : 0; 
+                int startIdx = (other.Id == player.Id) ? 20 : 0; // Increased safety for self-collision (initial length is 15)
                 var otherBody = other.Body.ToList();
                 for (int i = startIdx; i < otherBody.Count; i++)
                 {
@@ -487,23 +485,11 @@ public class GameEngine : IGameEngine
         
         Vector2 startPos;
         try {
-            // Use provided coordinates if available, otherwise find a safe random spawn
-            if (startX.HasValue && startY.HasValue)
-            {
-                startPos = new Vector2(startX.Value, startY.Value);
-                OnLog?.Invoke($"Using existing coordinates from database: {startPos.X:F1}, {startPos.Y:F1}");
-            }
-            else
-            {
-                startPos = FindSafeSpawn(150f); // Increased spacing for spawn
-            }
+            // Always find a new safe random spawn for new player
+            startPos = FindSafeSpawn(150f); // Increased spacing for spawn
             
-            // Reset player state completely before spawning
+            // Initial body segments (increased by 50% from 10 to 15)
             player.Body.Clear();
-            player.Score = initialScore;
-            player.Speed = 3.0f;
-            player.IsDead = false;
-
             for (int i = 0; i < 15 + initialScore / 2; i++) player.Body.Add(startPos);
             
             if (_players.TryAdd(id, player))
@@ -520,11 +506,11 @@ public class GameEngine : IGameEngine
 
     private string GetRandomParrotColor()
     {
-        string[] colors = {
+        string[] colors = [
             "#FF5733", "#33FF57", "#3357FF", "#FF33A1", "#A133FF",
             "#33FFF5", "#FF8C33", "#8CFF33", "#338CFF", "#FF3333",
             "#33FF33", "#3333FF", "#FFFF33", "#FF33FF", "#33FFFF"
-        };
+        ];
         return colors[_random.Next(colors.Length)];
     }
 

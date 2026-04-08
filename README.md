@@ -1,62 +1,126 @@
-# 🦜 Squawk: Multiplayer Parrot Battle
-
-Wysokowydajny serwer gier wieloosobowych z estetycznym panelem sterowania dla gry **Squawk**. Projekt oferuje solidny backend dla bitew papug, synchronizację w czasie rzeczywistym, zaawansowane AI botów oraz nowoczesny interfejs zarządzania zbudowany w **Avalonia UI**.
-
-## 🚀 Kluczowe Funkcje
-
-- **Silnik Gry High-Performance**: Obsługa ruchu papug, kolizji i mechaniki energii w czasie rzeczywistym na mapie o promieniu 1500 jednostek.
-- **Komunikacja WebSocket**: Niskolatencyjna interakcja klient-serwer napędzana przez `WatsonWebsocket`.
-- **Zintegrowany Web Server**: Serwuje klienta gry bezpośrednio z zasobów pliku wykonywalnego.
-- **Panel Sterowania**: Nowoczesny interfejs w klimacie dżungli (Avalonia UI) umożliwiający:
-  - Zarządzanie silnikiem gry (Start/Stop).
-  - Monitoring usług sieciowych (WebSocket & HTTP).
-  - Kontrolę botów (włączanie/wyłączanie, agresywność).
-- **System Botów**: Zawsze aktywna czwórka botów (Bot1-Bot4) z unikalnym systemem punktacji i inteligentnym zbieraniem jedzenia.
-- **Dynamiczne Jedzenie**: Stała liczba 400 punktów jedzenia na mapie z inteligentnym systemem respawnu (3 sekundy opóźnienia).
-- **Single-File Executable**: W pełni samowystarczalny build `.exe` (wszystkie DLL i zasoby klienta w jednym pliku).
-
-## 🛠 Stos Technologiczny
-
-- **Backend**: .NET 10.0 (C#)
-- **GUI**: Avalonia UI (Modern XAML)
-- **Networking**: WatsonWebsocket, TcpListener
-- **Baza Danych**: SQLite (Ranking TOP 10 i statystyki 24h)
-- **Frontend**: HTML5 Canvas (Pure JS) - zoptymalizowany pod kątem wydajności.
-
-## 📁 Struktura Projektu
-
-- `server/`: Rdzeń logiki, networking i mechanika gry.
-- `server/SquawkTests/`: Testy jednostkowe (xUnit) weryfikujące mechanikę silnika.
-- `client/`: Zasoby frontendowe i logika renderowania Canvas (osadzone w serwerze).
-- `build.ps1`: Zaawansowany skrypt automatyzujący proces kompilacji do jednego pliku .exe.
-
-## 🔨 Budowanie i Uruchamianie
-
-### Wymagania
-- .NET 10 SDK
-
-### Szybka Kompilacja (Skrypt PowerShell)
-Aby wygenerować gotowy plik `.exe` w głównym katalogu:
-```powershell
-.\build.ps1
-```
-
-### Uruchamianie Testów
-```powershell
-dotnet test server/SquawkTests/SquawkTests.csproj
-```
-
-## 📜 Detale Techniczne
-
-### Sieć
-- **Port WebSocket**: `5005` (Aktualizacje stanu gry)
-- **Port HTTP**: `5006` (Serwowanie klienta gry)
-
-### Mechanika Świata
-Serwer zarządza pełnym stanem świata, w tym:
-- **Papugi**: Zarządzanie pozycją, kątem obrotu i segmentami ciała (dynamiczne skalowanie rozmiaru).
-- **Bezpieczny Spawn**: Algorytm wyszukujący wolną przestrzeń na mapie, zapobiegający kolizjom na starcie.
-- **Ranking**: System TOP 10 aktualizowany co 500ms, przesyłający nazwę, punkty oraz aktualną długość węża.
-
----
-Developed with ❤️ by **Hnato.**
+<div align="center"> 
+ 
+ # 🦜 Squawk V1 
+ **Fast-Paced Multiplayer Parrot Survival Game** 
+ 
+ ![.NET](https://img.shields.io/badge/.NET-11.0-blueviolet?style=for-the-badge&logo=dotnet) 
+ ![Websocket](https://img.shields.io/badge/Network-WatsonWebsocket-5C2D91?style=for-the-badge&logo=dotnet) 
+ ![DB](https://img.shields.io/badge/DB-SQLite-blue?style=for-the-badge&logo=sqlite) 
+ ![Version](https://img.shields.io/badge/Version-V12.0_Parrot_Cove_Edition-brightgreen?style=for-the-badge) 
+ 
+ </div> 
+ 
+ --- 
+ 
+ ## ✨ Overview 
+ 
+ **Squawk** is a modern multiplayer game where you take control of a colorful parrot. Compete with other players and bots in a circular arena, eat food to grow your tail, and avoid colliding with others.  
+ Version **V12 "Parrot Cove Edition"** brings a massive technological overhaul, migrating to **.NET 11** and **C# 15**, with enhanced physics and bot AI. 🦜🌊 
+ 
+ The system consists of: 
+ 
+ - 🖥 **Windows Desktop Host** – a WinForms-based server manager with real-time logging. 
+ - 🚀 **WebSocket Engine** – a high-performance backend powered by WatsonWebsocket for low-latency gameplay. 
+ - 🌐 **Web Client** – a smooth Vanilla JS + Canvas interface with a futuristic neon aesthetic. 
+ - 💾 **Database Layer** – SQLite + Dapper for persistent player states and global leaderboards. 
+ 
+ --- 
+ 
+ ## 🆕 What's New in V1 (Changelog) 
+ 
+ ### 🚀 Technology Migration 
+ - **.NET 11 & C# 15:** Full migration to the latest .NET preview, utilizing primary constructors and collection expressions. 
+ - **Performance:** Optimized game loop (Tick) for stable 60 FPS server-side processing. 
+ - **Modern Locking:** Implementation of the new `System.Threading.Lock` for thread-safe food and player management. 
+ 
+ ### 🎮 Gameplay Enhancements 
+ - **Improved Spawn System:** Safe random spawning with collision checks and database position recovery. 
+ - **Smart Bots:** Exactly 4 active bots (Bot1-Bot4) with improved boundary avoidance and hunting logic. 
+ - **Food Respawn:** Fixed 400 food items on map with a precise 3-second respawn timer. 
+ 
+ ### 🛠 Fixes & UI 
+ - **Camera Fix:** Resolved the (0,0) spawn camera lock; players now center correctly on spawn. 
+ - **Visual Overhaul:** New neon-grid background, glowing food items, and smooth parrot animations. 
+ - **UI Stats:** Real-time counters for online players and food items on the map. 
+ 
+ --- 
+ 
+ ## 🚀 Key Features 
+ 
+ ### 💬 Competition 
+ - **Global Leaderboard** – top 10 players of all time. 
+ - **24h Records** – compete for the best score of the day. 
+ - **Dynamic Scoring** – eat food and power-ups to grow and speed up. 
+ - **Bot System** – always-on AI competitors to keep the world alive. 
+ 
+ ### 🎨 Aesthetics & UI 
+ - **Parrot Customization** – random vibrant colors for every player. 
+ - **Minimap** – real-time tracking of your position and other players. 
+ - **Death Screen** – detailed death reasons and final score reporting. 
+ - **Responsiveness** – full-screen canvas that adapts to any resolution. 
+ 
+ --- 
+ 
+ ## 💻 System Requirements 
+ 
+ ### Server (Host) 
+ - **OS:** Windows 10 (1809+) or Windows 11. 
+ - **Runtime:** .NET 11 Runtime (Desktop). 
+ - **Disk Space:** ~50MB for application + database. 
+ 
+ ### Client (Web) 
+ - **Browser:** Modern browser (Chrome, Firefox, Edge, Safari). 
+ - **Protocol:** Support for standard WebSockets. 
+ 
+ --- 
+ 
+ ## 📥 Running the Game 
+ 
+ 1. **Launch Server:** Run `SquawkServer.exe` and click **"Włącz Serwer"**. 
+ 2. **Access Client:** Open `index.html` in your browser (served by the host). 
+ 3. **Login:** Enter your parrot name and password to start your journey. 
+ 4. **Grow:** Eat food, avoid other parrots, and reach the top of the leaderboard! 
+ 
+ --- 
+ 
+ ## 🛠 Technology Stack 
+ 
+ - **Backend:** .NET 11.0, WatsonWebsocket, Dapper, SQLite. 
+ - **Frontend:** Vanilla JavaScript, Canvas API, CSS3. 
+ - **Tools:** 
+   - `build.ps1` – automated build and cleanup script. 
+   - `SquawkTests` – XUnit-based unit and integration testing suite. 
+ 
+ --- 
+ 
+ ## 📂 Project Structure 
+ 
+ ```text 
+ Squawk/ 
+ ├─ server/                  # Backend C# (WinForms + WebSocket) 
+ │  ├─ Models/               # Data models (Player, Food, User) 
+ │  ├─ SquawkTests/          # Test suite 
+ │  ├─ GameEngine.cs         # Core game logic & physics 
+ │  └─ WebSocketServer.cs    # Network communication 
+ ├─ client/                  # Frontend (JS, HTML, Assets) 
+ │  ├─ ico/                  # App icons 
+ │  ├─ img/                  # UI images 
+ │  ├─ game.js               # Client-side engine 
+ │  └─ index.html            # Main entry point 
+ └─ build.ps1                # Build automation script 
+ ``` 
+ 
+ --- 
+ 
+ ## 👑 Development Team 
+ 
+ The project is developed by: 
+ 
+ - 👨‍💻 Adam Hnatko ("Hnato") 
+ - 🛠 ThomasWack 
+ 
+ --- 
+ 
+ <div align="center"> 
+ &copy; 2026 Squawk Project. 
+ </div>
