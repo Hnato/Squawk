@@ -93,11 +93,11 @@ public class GameEngine : IGameEngine
         }
     }
 
-    private void SpawnFood(Vector2? nearPos = null, float radius = 0)
+    private void SpawnFood(Vector2? nearPos = null, float radius = 0, bool force = false)
     {
         // Must be called within _foodLock
-        if (!IsRunning && nearPos == null) return; // Only allow manual food spawn when not running
-        if (_foodItems.Count + _respawnQueue.Count >= _maxFood) return; // Prevent extra food
+        if (!IsRunning && nearPos == null && !force) return; // Only allow manual food spawn when not running
+        if (_foodItems.Count + _respawnQueue.Count >= _maxFood && !force) return; // Prevent extra food
         
         Vector2 position = Vector2.Zero;
         bool positionFound = false;
@@ -189,7 +189,7 @@ public class GameEngine : IGameEngine
             _respawnQueue.TryRemove(id, out _);
             lock (_foodLock)
             {
-                SpawnFood();
+                SpawnFood(force: true);
             }
         }
     }

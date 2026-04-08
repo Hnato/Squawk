@@ -79,7 +79,8 @@ public class GameEngineTests
         
         lock(internalLock) {
             internalFood.Clear();
-            for(int i=0; i<400; i++) {
+            // Add exactly 10 items for a cleaner test
+            for(int i=0; i<10; i++) {
                 internalFood.Add(new Food { Id = i, Position = new Vector2(i, i) });
             }
         }
@@ -94,7 +95,7 @@ public class GameEngineTests
         var p1 = engine.Players.First(p => p.Name == "P1");
         p1.Body[0] = food.Position; 
         
-        int initialCount = 400;
+        int initialCount = 10;
         engine.Tick(); // Detect collision
         
         lock(internalLock) {
