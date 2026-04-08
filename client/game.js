@@ -135,6 +135,13 @@ function handleServerMessage(msg, username) {
         case 'joined':
             playerId = msg.Data.Id;
             break;
+        case 'playerSpawned':
+            if (msg.Data.id === playerId) {
+                camera.x = msg.Data.x;
+                camera.y = msg.Data.y;
+                console.log(`Player spawned at ${camera.x}, ${camera.y}`);
+            }
+            break;
         case 'state':
             updateState(msg.Data);
             break;

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "pK3Z7WiH41U=",
+  "dgSpecHash": "dpzmN+/Kt2o=",
   "success": true,
-  "projectFilePath": "C:\\Users\\user\\Music\\Squawk\\server\\SquawkTests\\SquawkTests.csproj",
+  "projectFilePath": "C:\\Users\\user\\Music\\Squawk\\Git relase\\server\\SquawkTests\\SquawkTests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\user\\.nuget\\packages\\bcrypt.net-next\\4.1.0\\bcrypt.net-next.4.1.0.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\coverlet.collector\\6.0.4\\coverlet.collector.6.0.4.nupkg.sha512",
@@ -26,10 +26,7 @@
     "C:\\Users\\user\\.nuget\\packages\\xunit.core\\2.9.3\\xunit.core.2.9.3.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\xunit.extensibility.core\\2.9.3\\xunit.extensibility.core.2.9.3.nupkg.sha512",
     "C:\\Users\\user\\.nuget\\packages\\xunit.extensibility.execution\\2.9.3\\xunit.extensibility.execution.2.9.3.nupkg.sha512",
-    "C:\\Users\\user\\.nuget\\packages\\xunit.runner.visualstudio\\3.1.4\\xunit.runner.visualstudio.3.1.4.nupkg.sha512",
-    "C:\\Users\\user\\.nuget\\packages\\microsoft.netcore.app.ref\\10.0.3\\microsoft.netcore.app.ref.10.0.3.nupkg.sha512",
-    "C:\\Users\\user\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\10.0.3\\microsoft.windowsdesktop.app.ref.10.0.3.nupkg.sha512",
-    "C:\\Users\\user\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\10.0.3\\microsoft.aspnetcore.app.ref.10.0.3.nupkg.sha512"
+    "C:\\Users\\user\\.nuget\\packages\\xunit.runner.visualstudio\\3.1.4\\xunit.runner.visualstudio.3.1.4.nupkg.sha512"
   ],
   "logs": []
 }

@@ -95,17 +95,17 @@ public class GameEngine : IGameEngine
         }
     }
 
-    private void SpawnFood(Vector2? nearPos = null, float radius = 0, bool force = false)
+    private void SpawnFood(Vector2? nearPos = null, float radius = 0, bool force = false, int? fixedId = null)
     {
         // Must be called within _foodLock
-        if (!force && !IsRunning && nearPos == null) return; // Only allow manual food spawn when not running
-        if (!force && _foodItems.Count + _respawnQueue.Count >= _maxFood) return; // Prevent extra food
+        if (!force && !IsRunning && nearPos == null) return; 
+        if (!force && _foodItems.Count + _respawnQueue.Count >= _maxFood) return; 
         
         Vector2 position = Vector2.Zero;
         bool positionFound = false;
         int attempts = 0;
 
-        while (!positionFound && attempts < 50)
+        while (!positionFound && attempts < 100) // Increased attempts from 50 to 100
         {
             attempts++;
             float angle = (float)(_random.NextDouble() * Math.PI * 2);
@@ -121,6 +121,7 @@ public class GameEngine : IGameEngine
             }
             else
             {
+                // Ensure spawn is within the circle map
                 dist = (float)(_random.NextDouble() * (_mapRadius - 50));
                 position = new Vector2(
                     _mapRadius + (float)Math.Cos(angle) * dist,
@@ -128,26 +129,35 @@ public class GameEngine : IGameEngine
                 );
             }
 
-            // Ensure distance from other food (minimal spacing)
-            bool tooClose = false;
-            foreach (var f in _foodItems)
-            {
-                if (Vector2.DistanceSquared(position, f.Position) < 400) // 20 units distance
-                {
-                    tooClose = true;
-                    break;
-                }
-            }
-
-            // Boundary check
+            // Boundary check - ensure it's inside the map
             var center = new Vector2(_mapRadius, _mapRadius);
-            if (Vector2.Distance(position, center) < _mapRadius - 10 && !tooClose)
+            if (Vector2.Distance(position, center) < _mapRadius - 20)
             {
-                positionFound = true;
+                // Spacing check
+                bool tooClose = false;
+                foreach (var f in _foodItems)
+                {
+                    if (Vector2.DistanceSquared(position, f.Position) < 225) // Reduced from 400 to 225 (15 units)
+                    {
+                        tooClose = true;
+                        break;
+                    }
+                }
+
+                if (!tooClose) positionFound = true;
             }
         }
 
-        if (!positionFound) return; // Skip if no space found after 50 attempts
+        if (!positionFound) 
+        {
+            // If still not found, just pick a random spot inside the circle without checking proximity
+            float angle = (float)(_random.NextDouble() * Math.PI * 2);
+            float dist = (float)(_random.NextDouble() * (_mapRadius - 50));
+            position = new Vector2(
+                _mapRadius + (float)Math.Cos(angle) * dist,
+                _mapRadius + (float)Math.Sin(angle) * dist
+            );
+        }
         
         bool isPowerUp = _random.NextDouble() < 0.05; // 5% chance
         string type = isPowerUp ? (_random.NextDouble() < 0.5 ? "speed" : "score") : "food";
@@ -155,7 +165,7 @@ public class GameEngine : IGameEngine
         
         _foodItems.Add(new Food
         {
-            Id = _random.Next(1000000),
+            Id = fixedId ?? _random.Next(1000000),
             Position = position,
             Value = isPowerUp ? 10 : _random.Next(1, 5),
             Color = color,
@@ -200,7 +210,7 @@ public class GameEngine : IGameEngine
             _respawnQueue.TryRemove(id, out _);
             lock (_foodLock)
             {
-                SpawnFood(force: true);
+                SpawnFood(force: true, fixedId: id);
             }
         }
     }
@@ -379,7 +389,8 @@ public class GameEngine : IGameEngine
             foreach (var other in playersSnapshot)
             {
                 if (other.IsDead) continue;
-                int startIdx = (other.Id == player.Id) ? 10 : 0; // Increased safety for self-collision
+                // Increased safety for self-collision (must be larger than initial length of 15)
+                int startIdx = (other.Id == player.Id) ? 20 : 0; 
                 var otherBody = other.Body.ToList();
                 for (int i = startIdx; i < otherBody.Count; i++)
                 {
@@ -476,11 +487,23 @@ public class GameEngine : IGameEngine
         
         Vector2 startPos;
         try {
-            // Always find a new safe random spawn for new player
-            startPos = FindSafeSpawn(150f); // Increased spacing for spawn
+            // Use provided coordinates if available, otherwise find a safe random spawn
+            if (startX.HasValue && startY.HasValue)
+            {
+                startPos = new Vector2(startX.Value, startY.Value);
+                OnLog?.Invoke($"Using existing coordinates from database: {startPos.X:F1}, {startPos.Y:F1}");
+            }
+            else
+            {
+                startPos = FindSafeSpawn(150f); // Increased spacing for spawn
+            }
             
-            // Initial body segments (increased by 50% from 10 to 15)
+            // Reset player state completely before spawning
             player.Body.Clear();
+            player.Score = initialScore;
+            player.Speed = 3.0f;
+            player.IsDead = false;
+
             for (int i = 0; i < 15 + initialScore / 2; i++) player.Body.Add(startPos);
             
             if (_players.TryAdd(id, player))

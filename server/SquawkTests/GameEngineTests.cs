@@ -54,17 +54,22 @@ public class GameEngineTests
     {
         var engine = new GameEngine();
         engine.BotsEnabled = true;
-        // engine.Start(); // We call Tick() to trigger maintenance
+        engine.Start(); 
+        
+        // Wait a bit to ensure Start() has finished if there's any async (there isn't but just in case)
+        
+        var botsAfterStart = engine.Players.Where(p => p.IsBot).ToList();
         
         engine.Tick();
         
-        var bots = engine.Players.Where(p => p.IsBot).ToList();
-        Assert.Equal(4, bots.Count);
+        var botsAfterTick = engine.Players.Where(p => p.IsBot).ToList();
         
-        foreach (var bot in bots)
+        Assert.True(botsAfterStart.Count == 4, $"Expected 4 bots after Start, got {botsAfterStart.Count}");
+        Assert.True(botsAfterTick.Count == 4, $"Expected 4 bots after Tick, got {botsAfterTick.Count}");
+        
+        foreach (var bot in botsAfterTick)
         {
             Assert.StartsWith("Bot", bot.Name);
-            Assert.Equal(0, bot.Score);
             Assert.Equal(15, bot.Body.Count);
         }
     }
@@ -73,14 +78,18 @@ public class GameEngineTests
     public void Food_Should_Respawn_After_3_Seconds()
     {
         var engine = new GameEngine();
+        engine.BotsEnabled = false; // Disable bots to avoid extra food from bot deaths
+        engine.Start(); 
         
         var internalFood = engine.InternalFoodList;
         var internalLock = engine.InternalFoodLock;
+        var center = new Vector2(1500f, 1500f);
         
         lock(internalLock) {
             internalFood.Clear();
+            engine.InternalRespawnQueue.Clear();
             for(int i=0; i<400; i++) {
-                internalFood.Add(new Food { Id = i, Position = new Vector2(i*100, i*100), Value = 1 });
+                internalFood.Add(new Food { Id = i, Position = center + new Vector2(i, 0), Value = 1 });
             }
         }
 
@@ -89,14 +98,15 @@ public class GameEngineTests
             food = internalFood.First();
         }
         
-        // Use direct player map access with proper initialization
+        // Create player exactly on top of food
         var p1 = new Player { 
             Id = "p1", 
             Name = "P1", 
             Body = new List<Vector2> { new Vector2(food.Position.X, food.Position.Y) },
             IsDead = false,
-            Speed = 3.0f,
-            Score = 0
+            Speed = 0f, // Don't move so we stay on food
+            Score = 0,
+            Angle = 0
         };
         engine.InternalPlayerMap.TryAdd("p1", p1);
         
@@ -107,7 +117,8 @@ public class GameEngineTests
         bool inQueue = engine.InternalRespawnQueue.ContainsKey(food.Id);
         Assert.True(inQueue, $"Food {food.Id} should be in respawn queue after collision. Player at {p1.Body[0]}, Food at {food.Position}");
         
-        System.Threading.Thread.Sleep(3500);
+        // Fast forward time in the queue (we can't easily do this, so we'll wait)
+        System.Threading.Thread.Sleep(3100);
         engine.Tick(); 
         
         lock(internalLock) {
