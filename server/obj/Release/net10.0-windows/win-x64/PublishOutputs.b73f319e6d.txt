@@ -1,2 +1,0 @@
-C:\Users\user\Music\Squawk\server\bin\Release\net10.0-windows\win-x64\publish\SquawkServer.pdb
-C:\Users\user\Music\Squawk\server\bin\Release\net10.0-windows\win-x64\publish\SquawkServer.exe

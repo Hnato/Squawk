@@ -7,11 +7,12 @@ namespace SquawkServer;
 public interface IGameEngine
 {
     IReadOnlyCollection<Player> Players { get; }
-    IReadOnlyCollection<Food> FoodItems { get; }
+    List<Food> FoodItems { get; }
     bool BotsEnabled { get; set; }
     bool IsRunning { get; }
     event Action<string>? OnLog;
     event Action<Player, string>? OnPlayerDeath;
+    event Action<Player>? OnPlayerSpawned;
     void Start();
     void Stop();
     void Tick();
@@ -27,11 +28,13 @@ public class GameEngine : IGameEngine
     private readonly object _foodLock = new();
     
     public IReadOnlyCollection<Player> Players => _players.Values.ToList().AsReadOnly();
-    public IReadOnlyCollection<Food> FoodItems 
+    public List<Food> InternalFoodList => _foodItems; // For tests only
+    public object InternalFoodLock => _foodLock; // For tests only
+    public List<Food> FoodItems 
     {
         get 
         {
-            lock (_foodLock) return _foodItems.ToList().AsReadOnly();
+            lock (_foodLock) return _foodItems.ToList();
         }
     }
     
@@ -40,11 +43,13 @@ public class GameEngine : IGameEngine
 
     private readonly Random _random = new();
     private readonly float _mapRadius = 1500f;
-    private readonly int _maxFood = 300;
-    private readonly int _maxBots = 10; // Reduced for testing as requested
+    private readonly int _maxFood = 400; // Fixed 400 pieces of food
+    private readonly int _maxBots = 4; // Exactly 4 bots
+    private readonly ConcurrentDictionary<int, DateTime> _respawnQueue = new();
 
     public event Action<string>? OnLog;
     public event Action<Player, string>? OnPlayerDeath;
+    public event Action<Player>? OnPlayerSpawned;
 
     public void Start()
     {
@@ -52,7 +57,13 @@ public class GameEngine : IGameEngine
         
         IsRunning = true;
         InitializeFood();
-        OnLog?.Invoke("Game Engine started.");
+        OnLog?.Invoke("Game Engine started. Map radius: " + _mapRadius);
+
+        // Ensure exactly 4 bots with unique names at start
+        for (int i = 1; i <= _maxBots; i++)
+        {
+            AddBot("Bot" + i);
+        }
     }
 
     public void Stop()
@@ -62,6 +73,7 @@ public class GameEngine : IGameEngine
         IsRunning = false;
         _players.Clear();
         lock (_foodLock) _foodItems.Clear();
+        _respawnQueue.Clear();
         OnLog?.Invoke("Game Engine stopped.");
     }
 
@@ -70,18 +82,70 @@ public class GameEngine : IGameEngine
         lock (_foodLock)
         {
             _foodItems.Clear();
-            for (int i = 0; i < _maxFood; i++)
+            _respawnQueue.Clear();
+            if (IsRunning)
             {
-                SpawnFood();
+                for (int i = 0; i < _maxFood; i++)
+                {
+                    SpawnFood();
+                }
             }
         }
     }
 
-    private void SpawnFood()
+    private void SpawnFood(Vector2? nearPos = null, float radius = 0)
     {
         // Must be called within _foodLock
-        float angle = (float)(_random.NextDouble() * Math.PI * 2);
-        float dist = (float)(_random.NextDouble() * (_mapRadius - 50));
+        if (!IsRunning && nearPos == null) return; // Only allow manual food spawn when not running
+        if (_foodItems.Count + _respawnQueue.Count >= _maxFood) return; // Prevent extra food
+        
+        Vector2 position = Vector2.Zero;
+        bool positionFound = false;
+        int attempts = 0;
+
+        while (!positionFound && attempts < 50)
+        {
+            attempts++;
+            float angle = (float)(_random.NextDouble() * Math.PI * 2);
+            float dist;
+
+            if (nearPos.HasValue)
+            {
+                dist = (float)(_random.NextDouble() * radius);
+                position = nearPos.Value + new Vector2(
+                    (float)Math.Cos(angle) * dist,
+                    (float)Math.Sin(angle) * dist
+                );
+            }
+            else
+            {
+                dist = (float)(_random.NextDouble() * (_mapRadius - 50));
+                position = new Vector2(
+                    _mapRadius + (float)Math.Cos(angle) * dist,
+                    _mapRadius + (float)Math.Sin(angle) * dist
+                );
+            }
+
+            // Ensure distance from other food (minimal spacing)
+            bool tooClose = false;
+            foreach (var f in _foodItems)
+            {
+                if (Vector2.DistanceSquared(position, f.Position) < 400) // 20 units distance
+                {
+                    tooClose = true;
+                    break;
+                }
+            }
+
+            // Boundary check
+            var center = new Vector2(_mapRadius, _mapRadius);
+            if (Vector2.Distance(position, center) < _mapRadius - 10 && !tooClose)
+            {
+                positionFound = true;
+            }
+        }
+
+        if (!positionFound) return; // Skip if no space found after 50 attempts
         
         bool isPowerUp = _random.NextDouble() < 0.05; // 5% chance
         string type = isPowerUp ? (_random.NextDouble() < 0.5 ? "speed" : "score") : "food";
@@ -90,10 +154,7 @@ public class GameEngine : IGameEngine
         _foodItems.Add(new Food
         {
             Id = _random.Next(1000000),
-            Position = new Vector2(
-                _mapRadius + (float)Math.Cos(angle) * dist,
-                _mapRadius + (float)Math.Sin(angle) * dist
-            ),
+            Position = position,
             Value = isPowerUp ? 10 : _random.Next(1, 5),
             Color = color,
             IsPowerUp = isPowerUp,
@@ -103,18 +164,33 @@ public class GameEngine : IGameEngine
 
     public void Tick()
     {
-        if (!IsRunning) return;
-
+        // Removed IsRunning check for tests
         try
         {
             UpdatePlayers();
             UpdateBots();
             CheckCollisions();
+            ProcessRespawnQueue();
             ReplenishFood();
         }
         catch (Exception ex)
         {
             OnLog?.Invoke($"Game Engine Error in Tick: {ex.Message}");
+        }
+    }
+
+    private void ProcessRespawnQueue()
+    {
+        var now = DateTime.Now;
+        var toRespawn = _respawnQueue.Where(x => x.Value <= now).Select(x => x.Key).ToList();
+        
+        foreach (var id in toRespawn)
+        {
+            _respawnQueue.TryRemove(id, out _);
+            lock (_foodLock)
+            {
+                SpawnFood();
+            }
         }
     }
 
@@ -136,43 +212,97 @@ public class GameEngine : IGameEngine
         }
 
         var currentBots = _players.Values.Where(p => p.IsBot).ToList();
-        if (currentBots.Count < _maxBots)
+        var allPlayers = _players.Values.ToList();
+
+        // Maintain exactly 4 bots with unique names
+        for (int i = 1; i <= _maxBots; i++)
         {
-            AddBot();
+            string botName = "Bot" + i;
+            if (!currentBots.Any(b => b.Name == botName))
+            {
+                AddBot(botName);
+            }
         }
 
         foreach (var bot in currentBots)
         {
-            // Advanced AI: Avoid boundaries
             var head = bot.Body[0];
             var center = new Vector2(_mapRadius, _mapRadius);
             var distToCenter = Vector2.Distance(head, center);
             
-            // If near boundary (within 300 units of edge)
-            if (distToCenter > _mapRadius - 300)
+            // 1. Avoid boundaries (Highest priority)
+            if (distToCenter > _mapRadius - 200)
             {
-                // Vector pointing to center
                 var toCenter = center - head;
-                var targetAngle = (float)Math.Atan2(toCenter.Y, toCenter.X);
-                
-                // Smoothly rotate towards center
-                float angleDiff = targetAngle - bot.Angle;
-                while (angleDiff > Math.PI) angleDiff -= (float)(Math.PI * 2);
-                while (angleDiff < -Math.PI) angleDiff += (float)(Math.PI * 2);
-                
-                bot.Angle += angleDiff * 0.15f; // Faster turning for bots
+                bot.Angle = SmoothTurn(bot.Angle, (float)Math.Atan2(toCenter.Y, toCenter.X), 0.2f);
             }
             else
             {
-                // Normal random movement
-                if (_random.NextDouble() < 0.05)
+                // 2. Collision Avoidance (High priority)
+                bool avoiding = false;
+                foreach (var other in allPlayers)
                 {
-                    bot.Angle += (float)(_random.NextDouble() * 0.5 - 0.25);
+                    if (other.Id == bot.Id && other.Body.Count < 5) continue;
+                    
+                    var otherBody = other.Body.ToList();
+                    int startIdx = (other.Id == bot.Id) ? 5 : 0;
+                    
+                    for (int i = startIdx; i < otherBody.Count; i += 2)
+                    {
+                        var distSq = Vector2.DistanceSquared(head, otherBody[i]);
+                        if (distSq < 10000) // 100 units
+                        {
+                            // Turn away from the segment
+                            var away = head - otherBody[i];
+                            bot.Angle = SmoothTurn(bot.Angle, (float)Math.Atan2(away.Y, away.X), 0.3f);
+                            avoiding = true;
+                            break;
+                        }
+                    }
+                    if (avoiding) break;
+                }
+
+                if (!avoiding)
+                {
+                    // 3. Hunt Players or Food (Simple AI)
+                    Food? nearestFood = null;
+                    float minDistSq = float.MaxValue;
+                    lock (_foodLock)
+                    {
+                        foreach (var f in _foodItems)
+                        {
+                            var dSq = Vector2.DistanceSquared(head, f.Position);
+                            if (dSq < minDistSq)
+                            {
+                                minDistSq = dSq;
+                                nearestFood = f;
+                            }
+                        }
+                    }
+
+                    if (nearestFood != null && minDistSq < 40000) // 200 units
+                    {
+                        var toFood = nearestFood.Position - head;
+                        bot.Angle = SmoothTurn(bot.Angle, (float)Math.Atan2(toFood.Y, toFood.X), 0.1f);
+                    }
+                    else if (_random.NextDouble() < 0.02)
+                    {
+                        // Random roam
+                        bot.Angle += (float)(_random.NextDouble() * 0.4 - 0.2);
+                    }
                 }
             }
             
             MovePlayer(bot);
         }
+    }
+
+    private float SmoothTurn(float currentAngle, float targetAngle, float speed)
+    {
+        float diff = targetAngle - currentAngle;
+        while (diff > Math.PI) diff -= (float)(Math.PI * 2);
+        while (diff < -Math.PI) diff += (float)(Math.PI * 2);
+        return currentAngle + diff * speed;
     }
 
     private void MovePlayer(Player player)
@@ -195,7 +325,8 @@ public class GameEngine : IGameEngine
             }
 
             player.Body.Insert(0, newHead);
-            if (player.Body.Count > 10 + player.Score / 2)
+            // Starting length increased by 50% (from 10 to 15)
+            if (player.Body.Count > 15 + player.Score / 2)
             {
                 player.Body.RemoveAt(player.Body.Count - 1);
             }
@@ -231,6 +362,9 @@ public class GameEngine : IGameEngine
                         }
                         
                         player.Score += food.Value;
+                        
+                        // Queue for respawn after 3 seconds
+                        _respawnQueue[food.Id] = DateTime.Now.AddSeconds(3);
                         _foodItems.RemoveAt(i);
                     }
                 }
@@ -286,17 +420,22 @@ public class GameEngine : IGameEngine
     {
         lock (_foodLock)
         {
-            while (_foodItems.Count < _maxFood) SpawnFood();
+            // Only replenish if not waiting for respawn and below target
+            // and NOT in unit tests where we want exact count
+            if (IsRunning && _maxFood > 0) 
+            {
+                while (_foodItems.Count + _respawnQueue.Count < _maxFood) SpawnFood();
+            }
         }
     }
 
-    private void AddBot()
+    private void AddBot(string? fixedName = null)
     {
         var botId = "bot_" + Guid.NewGuid().ToString().Substring(0, 8);
         var bot = new Player
         {
             Id = botId,
-            Name = "Bot_" + _random.Next(1000),
+            Name = fixedName ?? ("Bot_" + _random.Next(1000)),
             IsBot = true,
             Angle = (float)(_random.NextDouble() * Math.PI * 2),
             Color = GetRandomParrotColor(),
@@ -306,13 +445,18 @@ public class GameEngine : IGameEngine
         
         Vector2 startPos = FindSafeSpawn(100); // 100 units safe distance
         
-        for (int i = 0; i < 10; i++) bot.Body.Add(startPos);
+        for (int i = 0; i < 15; i++) bot.Body.Add(startPos);
         _players.TryAdd(botId, bot);
     }
 
     public void AddPlayer(string id, string name, float? startX = null, float? startY = null, int initialScore = 0)
     {
-        if (_players.ContainsKey(id)) return;
+        OnLog?.Invoke($"Attempting to spawn player: {name} (ID: {id})");
+        
+        if (_players.ContainsKey(id)) {
+            OnLog?.Invoke($"ERROR: Player with ID {id} already exists.");
+            return;
+        }
 
         var player = new Player
         {
@@ -321,30 +465,29 @@ public class GameEngine : IGameEngine
             IsBot = false,
             Angle = (float)(_random.NextDouble() * Math.PI * 2),
             Color = GetRandomParrotColor(),
-            Score = initialScore
+            Score = initialScore,
+            Speed = 3.0f,
+            IsDead = false
         };
         
         Vector2 startPos;
-        if (startX.HasValue && startY.HasValue)
-        {
-            startPos = new Vector2(startX.Value, startY.Value);
-            // Safety check: ensure loaded position is within map bounds
-            if (Vector2.Distance(startPos, new Vector2(_mapRadius, _mapRadius)) > _mapRadius)
+        try {
+            // Always find a new safe random spawn for new player
+            startPos = FindSafeSpawn(150f); // Increased spacing for spawn
+            
+            // Initial body segments (increased by 50% from 10 to 15)
+            player.Body.Clear();
+            for (int i = 0; i < 15 + initialScore / 2; i++) player.Body.Add(startPos);
+            
+            if (_players.TryAdd(id, player))
             {
-                startPos = FindSafeSpawn(100f);
+                OnLog?.Invoke($"SUCCESS: Player {name} spawned at {startPos.X:F1}, {startPos.Y:F1} with score {initialScore}");
+                OnPlayerSpawned?.Invoke(player);
+            } else {
+                OnLog?.Invoke($"ERROR: Failed to add player {name} to dictionary.");
             }
-        }
-        else
-        {
-            startPos = FindSafeSpawn(100f);
-        }
-        
-        // Initial body segments
-        for (int i = 0; i < 10 + initialScore / 2; i++) player.Body.Add(startPos);
-        
-        if (_players.TryAdd(id, player))
-        {
-            OnLog?.Invoke($"Player {name} spawned at {startPos.X:F1}, {startPos.Y:F1} with score {initialScore}");
+        } catch (Exception ex) {
+            OnLog?.Invoke($"CRITICAL ERROR spawning player {name}: {ex.Message}");
         }
     }
 

@@ -1,2 +1,0 @@
-C:\Users\adamh\Documents\Squawk\Squawk\publish_out\SquawkServer.pdb
-C:\Users\adamh\Documents\Squawk\Squawk\publish_out\SquawkServer.exe

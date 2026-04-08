@@ -26,7 +26,46 @@ public class DatabaseManager
                 LastPosX REAL DEFAULT 1500,
                 LastPosY REAL DEFAULT 1500,
                 LastScore INTEGER DEFAULT 0
-            )");
+            );
+            CREATE TABLE IF NOT EXISTS Scores (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                Username TEXT NOT NULL,
+                Score INTEGER NOT NULL,
+                Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_scores_timestamp ON Scores(Timestamp);
+            CREATE INDEX IF NOT EXISTS idx_scores_score ON Scores(Score);
+        ");
+    }
+
+    public void AddScore(string username, int score)
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        connection.Execute("INSERT INTO Scores (Username, Score) VALUES (@username, @score)", 
+            new { username, score });
+    }
+
+    public IEnumerable<dynamic> GetTop10()
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        return connection.Query(@"
+            SELECT Username as Name, MAX(Score) as Score 
+            FROM Scores 
+            GROUP BY Username 
+            ORDER BY Score DESC 
+            LIMIT 10");
+    }
+
+    public IEnumerable<dynamic> GetTop24h()
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        return connection.Query(@"
+            SELECT Username as Name, MAX(Score) as Score 
+            FROM Scores 
+            WHERE Timestamp >= datetime('now', '-1 day')
+            GROUP BY Username 
+            ORDER BY Score DESC 
+            LIMIT 10");
     }
 
     public void SavePlayerState(string username, float x, float y, int score)
@@ -37,6 +76,8 @@ public class DatabaseManager
             SET LastPosX = @x, LastPosY = @y, LastScore = @score 
             WHERE Username = @username",
             new { username, x, y, score });
+        
+        if (score > 0) AddScore(username, score);
     }
 
     public (float x, float y, int score) GetPlayerState(string username)

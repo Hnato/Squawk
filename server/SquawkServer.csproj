@@ -32,8 +32,7 @@
 
   <ItemGroup>
     <Compile Remove="tests\**" />
-    <EmbeddedResource Remove="tests\**" />
-    <None Remove="tests\**" />
+    <Compile Remove="SquawkTests\**" />
   </ItemGroup>
 
 </Project>

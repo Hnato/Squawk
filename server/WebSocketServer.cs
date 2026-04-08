@@ -34,6 +34,21 @@ public class WebSocketServer
         _updateTimer = new System.Timers.Timer(50); // 20 FPS updates
         _updateTimer.Elapsed += (s, e) => BroadcastState();
 
+        _engine.OnPlayerSpawned += (player) => {
+            var client = _server?.ListClients().FirstOrDefault(c => c.IpPort == player.Id);
+            if (client != null)
+            {
+                Send(client.Guid, new WsMessage { 
+                    Type = "playerSpawned", 
+                    Data = JsonSerializer.SerializeToElement(new { 
+                        id = player.Id, 
+                        x = player.Body[0].X, 
+                        y = player.Body[0].Y 
+                    }, _jsonOptions) 
+                });
+            }
+        };
+
         _engine.OnPlayerDeath += (player, reason) => {
             if (!player.IsBot)
             {
@@ -414,26 +429,32 @@ public class WebSocketServer
     {
         if (!_engine.IsRunning || _server == null) return;
 
+        var players = _engine.Players.Select(p => new {
+            Id = p.Id,
+            Name = p.Name,
+            Body = p.Body.Select(b => new { X = b.X, Y = b.Y }).ToList(),
+            Angle = p.Angle,
+            Score = p.Score,
+            Color = p.Color,
+            IsBot = p.IsBot
+        }).ToList();
+
+        var food = _engine.FoodItems.Select(f => new {
+            Id = f.Id,
+            Position = new { X = f.Position.X, Y = f.Position.Y },
+            Value = f.Value,
+            Color = f.Color,
+            IsPowerUp = f.IsPowerUp,
+            Type = f.Type
+        }).ToList();
+
         var state = new
         {
-            players = _engine.Players.Select(p => new {
-                Id = p.Id,
-                Name = p.Name,
-                Body = p.Body.Select(b => new { X = b.X, Y = b.Y }).ToList(),
-                Angle = p.Angle,
-                Score = p.Score,
-                Color = p.Color,
-                IsBot = p.IsBot
-            }),
-            food = _engine.FoodItems.Select(f => new {
-                Id = f.Id,
-                Position = new { X = f.Position.X, Y = f.Position.Y },
-                Value = f.Value,
-                Color = f.Color,
-                IsPowerUp = f.IsPowerUp,
-                Type = f.Type
-            }),
-            leaderboard = _engine.Players.OrderByDescending(p => p.Score).Take(10).Select(p => new { Name = p.Name, Score = p.Score })
+            players,
+            food,
+            leaderboard = _engine.Players.OrderByDescending(p => p.Score).Take(10).Select(p => new { Name = p.Name, Score = p.Score, Length = p.Body.Count }).ToList(),
+            top10 = _db.GetTop10().Select(e => new { Name = e.Name, Score = e.Score, Length = (int)(15 + (int)e.Score / 2) }),
+            records24h = _db.GetTop24h().Select(e => new { Name = e.Name, Score = e.Score, Length = (int)(15 + (int)e.Score / 2) })
         };
 
         var json = JsonSerializer.Serialize(new WsMessage { Type = "state", Data = JsonSerializer.SerializeToElement(state, _jsonOptions) }, _jsonOptions);

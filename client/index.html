@@ -17,6 +17,11 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             color: #f8f9fa;
         }
+        #game-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
         #ui {
             position: absolute;
             top: 24px;
@@ -48,7 +53,7 @@
             color: #e9ecef;
             padding-bottom: 4px;
         }
-        #auth-modal {
+        #auth-modal, #death-modal {
             position: fixed;
             top: 0;
             left: 0;
@@ -138,22 +143,50 @@
             text-decoration: none;
             cursor: pointer;
         }
-        #error-msg {
+        #error-msg, #death-reason {
             color: #ff4d4d;
             font-size: 13px;
             margin-top: 10px;
             height: 18px;
         }
+        #stats-panel {
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 15px;
+        }
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+        .stat-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
-    <div id="game-container"></div>
+    <canvas id="game-canvas"></canvas>
     <div id="ui">
-        <div id="stats" style="margin-bottom: 15px; font-size: 14px; font-weight: bold; color: #00ff88;">
-            Gracze: <span id="player-count">0</span>
+        <div id="stats-panel">
+            <div class="stat-item">
+                <span>Gracze online:</span>
+                <span id="player-count" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Twój wynik:</span>
+                <span id="player-score" class="stat-value">0</span>
+            </div>
+            <div class="stat-item">
+                <span>Jedzonko na mapie:</span>
+                <span id="food-count" class="stat-value">0</span>
+            </div>
         </div>
-        <h3>Ranking</h3>
+        <h3>Ranking TOP 10</h3>
         <div id="leaderboard"></div>
+        <h3 style="margin-top: 20px;">Rekordy 24h</h3>
+        <div id="records-24h"></div>
     </div>
 
     <div id="minimap-container" style="position: absolute; bottom: 20px; left: 20px; width: 200px; height: 200px; background: rgba(0,0,0,0.8); border: 2px solid #00ff88; border-radius: 12px; overflow: hidden; pointer-events: none; z-index: 1000; box-shadow: 0 0 20px rgba(0,255,136,0.3);">
@@ -183,7 +216,22 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <div id="death-modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Koniec Gry!</h2>
+            <div id="death-reason" style="margin-bottom: 20px; font-size: 18px; color: #fff;"></div>
+            <div class="stat-item" style="margin-bottom: 20px; font-size: 20px;">
+                <span>Twój wynik:</span>
+                <span id="final-score" class="stat-value">0</span>
+            </div>
+            <div class="modal-buttons">
+                <button id="play-again-btn" class="btn btn-primary">Zagraj ponownie</button>
+                <button id="logout-btn" class="btn btn-secondary">Wyloguj</button>
+            </div>
+        </div>
+    </div>
+
     <script src="game.js"></script>
 </body>
+</html>
 </html>
