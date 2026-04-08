@@ -9,10 +9,10 @@ let players = {};
 let foodItems = [];
 let leaderboard = [];
 let records24h = [];
-let mapRadius = 1500;
+let mapRadius = 1950;
 let isAuthorized = false;
 let mousePos = { x: 0, y: 0 };
-let camera = { x: 0, y: 0 };
+let camera = { x: 1950, y: 1950 };
 let minimapVisible = true;
 let lastUpdateTime = 0;
 let particles = [];
@@ -97,7 +97,7 @@ function setupUI() {
 
 function connectToServer(username, password, isRegister) {
     const currentPort = window.location.port ? parseInt(window.location.port) : 5006;
-    const wsPort = currentPort - 1;
+    const wsPort = 5006;
     const wsHost = window.location.hostname || '127.0.0.1';
     
     if (socket) socket.close();
@@ -115,9 +115,17 @@ function connectToServer(username, password, isRegister) {
         handleServerMessage(msg, username);
     };
 
-    socket.onclose = () => {
+    socket.onclose = (event) => {
         isAuthorized = false;
+        console.warn(`[MONITOR] Socket closed: Code ${event.code}, Reason: ${event.reason}`);
+        document.getElementById('monitor').textContent = "OFFLINE: " + (event.reason || "Server Closed");
+        document.getElementById('monitor').style.color = "#ff4444";
         document.getElementById('auth-modal').style.display = 'flex';
+    };
+    
+    socket.onerror = (err) => {
+        console.error("[MONITOR] WebSocket Error: ", err);
+        document.getElementById('monitor').textContent = "NETWORK ERROR";
     };
 }
 
@@ -127,13 +135,23 @@ function handleServerMessage(msg, username) {
             if (msg.Data.success) {
                 document.getElementById('auth-modal').style.display = 'none';
                 isAuthorized = true;
-                socket.send(JSON.stringify({ Type: 'join', Data: { name: username } }));
+                // Wait a bit before joining to ensure everything is ready
+                setTimeout(() => {
+                    socket.send(JSON.stringify({ Type: 'join', Data: { name: username } }));
+                }, 100);
             } else {
                 document.getElementById('error-msg').textContent = msg.Data.message;
             }
             break;
         case 'joined':
             playerId = msg.Data.Id;
+            break;
+        case 'playerSpawned':
+            if (msg.Data.Id === playerId) {
+                camera.x = msg.Data.x;
+                camera.y = msg.Data.y;
+                console.log(`Player spawned at ${camera.x}, ${camera.y}`);
+            }
             break;
         case 'state':
             updateState(msg.Data);
@@ -154,12 +172,16 @@ function updateState(data) {
 
     // Update UI
     document.getElementById('player-count').textContent = data.players.length;
-    document.getElementById('food-count').textContent = foodItems.length;
+    // document.getElementById('food-count').textContent = foodItems.length;
     const local = players[playerId];
-    if (local) {
+    if (local && local.Body && local.Body.length > 0) {
         document.getElementById('player-score').textContent = local.Score;
         camera.x = local.Body[0].X;
         camera.y = local.Body[0].Y;
+    } else if (data.players.length > 0 && (camera.x === 0 && camera.y === 0)) {
+        // Fallback to center if not spawned yet and camera at (0,0)
+        camera.x = mapRadius;
+        camera.y = mapRadius;
     }
     
     // Throttled leaderboard update (every 500ms)
@@ -245,7 +267,8 @@ function draw() {
 
     updateParticles();
 
-    if (isAuthorized && socket && socket.readyState === WebSocket.OPEN) {
+    const local = players[playerId];
+    if (local && local.Body && local.Body.length > 0) {
         const angle = Math.atan2(mousePos.y - canvas.height / 2, mousePos.x - canvas.width / 2);
         socket.send(JSON.stringify({ Type: 'move', Data: { angle } }));
     }
@@ -435,29 +458,56 @@ function drawPlayers(ox, oy) {
 }
 
 function drawMinimap() {
-    minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    minimapCtx.fillRect(0, 0, 200, 200);
+    minimapCtx.clearRect(0, 0, 200, 200);
     
+    // Background (Circle)
+    minimapCtx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    minimapCtx.beginPath();
+    minimapCtx.arc(100, 100, 100, 0, Math.PI * 2);
+    minimapCtx.fill();
+    
+    // Border
     minimapCtx.strokeStyle = '#00ff88';
-    minimapCtx.lineWidth = 1;
-    minimapCtx.strokeRect(5, 5, 190, 190);
+    minimapCtx.lineWidth = 2;
+    minimapCtx.stroke();
 
-    const scale = 190 / (mapRadius * 2);
+    const scale = 100 / mapRadius; // 100 pixels represents mapRadius units
 
     Object.values(players).forEach(p => {
+        if (!p.Body || p.Body.length === 0) return;
+        
         const head = p.Body[0];
-        const mx = 5 + head.X * scale;
-        const my = 5 + head.Y * scale;
+        // Calculate position relative to map center
+        const relX = head.X - mapRadius;
+        const relY = head.Y - mapRadius;
+        
+        const mx = 100 + relX * scale;
+        const my = 100 + relY * scale;
 
         if (p.Id === playerId) {
+            // Local player
             minimapCtx.fillStyle = '#fff';
+            minimapCtx.shadowBlur = 10;
+            minimapCtx.shadowColor = '#fff';
             minimapCtx.beginPath();
             minimapCtx.arc(mx, my, 4, 0, Math.PI * 2);
             minimapCtx.fill();
+            minimapCtx.shadowBlur = 0;
+            
+            // Player direction indicator
+            minimapCtx.strokeStyle = '#fff';
+            minimapCtx.lineWidth = 2;
+            minimapCtx.beginPath();
+            minimapCtx.moveTo(mx, my);
+            minimapCtx.lineTo(mx + Math.cos(p.Angle) * 8, my + Math.sin(p.Angle) * 8);
+            minimapCtx.stroke();
         } else {
+            // Others
             minimapCtx.fillStyle = p.IsBot ? '#00b4ff' : p.Color;
             minimapCtx.beginPath();
-            minimapCtx.arc(mx, my, 2.5, 0, Math.PI * 2);
+            // Size based on length (Score)
+            const size = 2 + Math.min(3, p.Score / 500);
+            minimapCtx.arc(mx, my, size, 0, Math.PI * 2);
             minimapCtx.fill();
         }
     });

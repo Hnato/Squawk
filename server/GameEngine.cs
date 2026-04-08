@@ -44,9 +44,9 @@ public class GameEngine : IGameEngine
     public bool IsRunning { get; private set; } = false;
 
     private readonly Random _random = new();
-    private readonly float _mapRadius = 1500f;
-    private readonly int _maxFood = 400; // Fixed 400 pieces of food
-    private readonly int _maxBots = 4; // Exactly 4 bots
+    private readonly float _mapRadius = 1950f;
+    private readonly int _maxFood = 9000; // Fixed 9000 pieces of food
+    private readonly int _maxBots = 12; // Exactly 12 bots
     private readonly ConcurrentDictionary<int, DateTime> _respawnQueue = new();
 
     public event Action<string>? OnLog;
@@ -175,7 +175,9 @@ public class GameEngine : IGameEngine
 
     public void Tick()
     {
-        // Maintenance: ensure exactly 4 bots with unique names
+        if (!IsRunning) return;
+
+        // Maintenance: ensure exactly bots with unique names
         for (int i = 1; i <= _maxBots; i++)
         {
             string botName = "Bot" + i;
@@ -218,6 +220,8 @@ public class GameEngine : IGameEngine
     {
         foreach (var player in _players.Values.Where(p => !p.IsBot))
         {
+            // Smoothly turn towards target angle
+            player.Angle = SmoothTurn(player.Angle, player.TargetAngle, 0.1f);
             MovePlayer(player);
         }
     }
@@ -249,13 +253,17 @@ public class GameEngine : IGameEngine
             else
             {
                 // 2. Collision Avoidance (High priority)
-                bool avoiding = false;
-                foreach (var other in allPlayers)
+            bool avoiding = false;
+            foreach (var other in allPlayers)
+            {
+                if (other.Id == bot.Id && other.Body.Count < 5) continue;
+                
+                List<Vector2> otherBody;
+                lock (other)
                 {
-                    if (other.Id == bot.Id && other.Body.Count < 5) continue;
-                    
-                    var otherBody = other.Body.ToList();
-                    int startIdx = (other.Id == bot.Id) ? 5 : 0;
+                    otherBody = other.Body.ToList();
+                }
+                int startIdx = (other.Id == bot.Id) ? 5 : 0;
                     
                     for (int i = startIdx; i < otherBody.Count; i += 2)
                     {
@@ -321,22 +329,36 @@ public class GameEngine : IGameEngine
 
         lock (player)
         {
+            // Smooth Rotation (90-120 degrees per second)
+            // Tick is 16ms (~60 FPS), so speed is ~2 degrees per tick
+            float turnSpeed = 0.12f; 
+            player.Angle = SmoothTurn(player.Angle, player.TargetAngle, turnSpeed);
+
             var head = player.Body[0];
             var direction = new Vector2((float)Math.Cos(player.Angle), (float)Math.Sin(player.Angle));
-            var newHead = head + direction * player.Speed;
+            
+            // Speed can vary based on score or powerups
+            float currentSpeed = player.Speed;
+            var newHead = head + direction * currentSpeed;
 
             // Boundary Check (Circle)
             var center = new Vector2(_mapRadius, _mapRadius);
             if (Vector2.Distance(newHead, center) > _mapRadius)
             {
                 player.IsDead = true; 
+                OnLog?.Invoke($"[MONITOR] Player {player.Name} died: Out of bounds at {newHead}");
                 OnPlayerDeath?.Invoke(player, "Wyleciałeś poza mapę!");
                 return;
             }
 
+            // Predictive Collision Check (Self and others)
+            // (Handled in CheckCollisions for simplicity, but could be added here)
+
             player.Body.Insert(0, newHead);
-            // Starting length increased by 50% (from 10 to 15)
-            if (player.Body.Count > 15 + player.Score / 2)
+            
+            // Dynamic length based on score
+            int targetLength = 15 + player.Score / 2;
+            while (player.Body.Count > targetLength)
             {
                 player.Body.RemoveAt(player.Body.Count - 1);
             }
@@ -389,7 +411,11 @@ public class GameEngine : IGameEngine
             {
                 if (other.IsDead) continue;
                 int startIdx = (other.Id == player.Id) ? 20 : 0; // Increased safety for self-collision (initial length is 15)
-                var otherBody = other.Body.ToList();
+                List<Vector2> otherBody;
+                lock (other)
+                {
+                    otherBody = other.Body.ToList();
+                }
                 for (int i = startIdx; i < otherBody.Count; i++)
                 {
                     if (Vector2.DistanceSquared(head, otherBody[i]) < 400) // 20^2
@@ -412,7 +438,12 @@ public class GameEngine : IGameEngine
                 lock (_foodLock)
                 {
                     // Leave food behind for others to eat
-                    foreach (var segment in deadPlayer.Body)
+                    List<Vector2> deadBody;
+                    lock (deadPlayer)
+                    {
+                        deadBody = deadPlayer.Body.ToList();
+                    }
+                    foreach (var segment in deadBody)
                     {
                         _foodItems.Add(new Food
                         {
@@ -464,11 +495,11 @@ public class GameEngine : IGameEngine
 
     public void AddPlayer(string id, string name, float? startX = null, float? startY = null, int initialScore = 0)
     {
-        OnLog?.Invoke($"Attempting to spawn player: {name} (ID: {id})");
+        OnLog?.Invoke($"[INIT] Attempting to spawn player: {name} (ID: {id})");
         
         if (_players.ContainsKey(id)) {
-            OnLog?.Invoke($"ERROR: Player with ID {id} already exists.");
-            return;
+            OnLog?.Invoke($"[MONITOR] ERROR: Duplicate join for ID {id}. Cleaning up old session.");
+            _players.TryRemove(id, out _);
         }
 
         var player = new Player
@@ -477,30 +508,39 @@ public class GameEngine : IGameEngine
             Name = name,
             IsBot = false,
             Angle = (float)(_random.NextDouble() * Math.PI * 2),
+            TargetAngle = 0,
             Color = GetRandomParrotColor(),
             Score = initialScore,
-            Speed = 3.0f,
+            Speed = 3.2f, // Slightly increased base speed
             IsDead = false
         };
+        player.TargetAngle = player.Angle;
         
         Vector2 startPos;
         try {
-            // Always find a new safe random spawn for new player
-            startPos = FindSafeSpawn(150f); // Increased spacing for spawn
+            // Priority: provided coord -> safe spawn -> center
+            if (startX.HasValue && startY.HasValue && startX.Value > 0 && startY.Value > 0)
+            {
+                startPos = new Vector2(startX.Value, startY.Value);
+            }
+            else
+            {
+                startPos = FindSafeSpawn(200f);
+            }
             
-            // Initial body segments (increased by 50% from 10 to 15)
             player.Body.Clear();
-            for (int i = 0; i < 15 + initialScore / 2; i++) player.Body.Add(startPos);
+            int startSegments = 15 + initialScore / 2;
+            for (int i = 0; i < startSegments; i++) player.Body.Add(startPos);
             
             if (_players.TryAdd(id, player))
             {
-                OnLog?.Invoke($"SUCCESS: Player {name} spawned at {startPos.X:F1}, {startPos.Y:F1} with score {initialScore}");
+                OnLog?.Invoke($"[MONITOR] SUCCESS: Player {name} spawned at {startPos.X:F0},{startPos.Y:F0}. Segments: {startSegments}");
                 OnPlayerSpawned?.Invoke(player);
             } else {
-                OnLog?.Invoke($"ERROR: Failed to add player {name} to dictionary.");
+                OnLog?.Invoke($"[MONITOR] ERROR: Dictionary conflict for {name} ({id}).");
             }
         } catch (Exception ex) {
-            OnLog?.Invoke($"CRITICAL ERROR spawning player {name}: {ex.Message}");
+            OnLog?.Invoke($"[CRITICAL] Spawn Pipeline failed for {name}: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
@@ -530,7 +570,14 @@ public class GameEngine : IGameEngine
             bool safe = true;
             foreach (var p in _players.Values)
             {
-                if (p.Body.Count > 0 && Vector2.Distance(pos, p.Body[0]) < safeDist)
+                Vector2 headPos;
+                lock (p)
+                {
+                    if (p.Body.Count == 0) continue;
+                    headPos = p.Body[0];
+                }
+                
+                if (Vector2.Distance(pos, headPos) < safeDist)
                 {
                     safe = false;
                     break;
@@ -556,7 +603,7 @@ public class GameEngine : IGameEngine
     {
         if (_players.TryGetValue(id, out var player))
         {
-            player.Angle = angle;
+            player.TargetAngle = angle;
         }
     }
 }

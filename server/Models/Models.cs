@@ -8,6 +8,7 @@ public class Player
     public string Name { get; set; } = string.Empty;
     public List<Vector2> Body { get; set; } = [];
     public float Angle { get; set; }
+    public float TargetAngle { get; set; }
     public float Speed { get; set; } = 3.0f;
     public int Score { get; set; }
     public bool IsBot { get; set; }

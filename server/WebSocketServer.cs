@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Numerics;
 using WatsonWebsocket;
 using SquawkServer.Models;
 using System.Net;
@@ -24,7 +25,7 @@ public class WebSocketServer
 
     public event Action<string>? OnLog;
 
-    public WebSocketServer(IGameEngine engine, DatabaseManager db, string ip = "127.0.0.1", int port = 5005)
+    public WebSocketServer(IGameEngine engine, DatabaseManager db, string ip = "0.0.0.0", int port = 5006)
     {
         _engine = engine;
         _db = db;
@@ -41,7 +42,7 @@ public class WebSocketServer
                 Send(client.Guid, new WsMessage { 
                     Type = "playerSpawned", 
                     Data = JsonSerializer.SerializeToElement(new { 
-                        id = player.Id, 
+                        Id = player.Id, 
                         x = player.Body[0].X, 
                         y = player.Body[0].Y 
                     }, _jsonOptions) 
@@ -148,7 +149,7 @@ public class WebSocketServer
 
                 // --- 2. HTTP Web Server (HttpListener) ---
                 _httpListener = new HttpListener();
-                int webPort = wsPort + 1;
+                int webPort = 5007; // 5006 is WS, 5007 is Web
                 bool webStarted = false;
                 Exception? lastWebEx = null;
 
@@ -159,22 +160,33 @@ public class WebSocketServer
                         _httpListener.Prefixes.Clear();
                         try 
                         {
-                            // Try global wildcard first
-                            _httpListener.Prefixes.Add($"http://*:{webPort}/");
+                            // Try multiple wildcards. "+" is the most permissive for HttpListener.
+                            _httpListener.Prefixes.Add($"http://+:{webPort}/");
                             _httpListener.Start();
                             webStarted = true;
-                            OnLog?.Invoke($"Web server started on *:{webPort}");
+                            OnLog?.Invoke($"[SERVER] Web server online on port {webPort} (Global)");
                             break;
                         }
-                        catch (Exception ex) when (ex.Message.Contains("nie jest obsługiwane") || ex.Message.Contains("not supported") || ex.Message.Contains("Access is denied"))
+                        catch (HttpListenerException ex) when (ex.ErrorCode == 5) // Access Denied
                         {
-                            // Fallback to localhost wildcard or specific loopback
-                            OnLog?.Invoke($"Web global wildcard failed, trying localhost:{webPort}...");
+                            OnLog?.Invoke("[SERVER] Admin rights required for global wildcard. Using local fallback...");
                             _httpListener.Prefixes.Clear();
                             _httpListener.Prefixes.Add($"http://localhost:{webPort}/");
+                            _httpListener.Prefixes.Add($"http://127.0.0.1:{webPort}/");
+                            _httpListener.Prefixes.Add($"http://0.0.0.0:{webPort}/"); // Some environments allow this
+                            
+                            try {
+                                var ips = Dns.GetHostAddresses(Dns.GetHostName());
+                                foreach (var ip in ips) {
+                                    if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) {
+                                        _httpListener.Prefixes.Add($"http://{ip}:{webPort}/");
+                                    }
+                                }
+                            } catch { }
+
                             _httpListener.Start();
                             webStarted = true;
-                            OnLog?.Invoke($"Web server started on localhost:{webPort}");
+                            OnLog?.Invoke($"[SERVER] Web server online on port {webPort} (Local only)");
                             break;
                         }
                     }
@@ -279,10 +291,36 @@ public class WebSocketServer
             string urlPath = context.Request.Url?.LocalPath ?? "/";
             if (urlPath == "/") urlPath = "/index.html";
             
-            // Format resource name: SquawkServer.client.subfolders.filename
-            // Replace / with . for resource path, but keep the original extension
-            string resourcePath = "SquawkServer.client" + urlPath.Replace('/', '.');
+            // 1. Try disk first (Development/Local)
+            // Search for client directory upwards from base directory
+            string? currentDir = AppDomain.CurrentDomain.BaseDirectory;
+            string? clientPath = null;
             
+            while (currentDir != null)
+            {
+                string potentialPath = Path.Combine(currentDir, "client");
+                if (Directory.Exists(potentialPath))
+                {
+                    clientPath = potentialPath;
+                    break;
+                }
+                currentDir = Path.GetDirectoryName(currentDir);
+            }
+
+            string localPath = clientPath != null ? Path.Combine(clientPath, urlPath.TrimStart('/')) : "";
+
+            if (!string.IsNullOrEmpty(localPath) && File.Exists(localPath))
+            {
+                byte[] buffer = File.ReadAllBytes(localPath);
+                context.Response.ContentLength64 = buffer.Length;
+                context.Response.ContentType = GetContentType(urlPath);
+                context.Response.OutputStream.Write(buffer, 0, buffer.Length);
+                return;
+            }
+
+            // 2. Fallback: Embedded Resources
+            // Format resource name: SquawkServer.client.subfolders.filename
+            string resourcePath = "SquawkServer.client" + urlPath.Replace('/', '.');
             using var stream = GetType().Assembly.GetManifestResourceStream(resourcePath);
 
             if (stream != null)
@@ -297,7 +335,8 @@ public class WebSocketServer
             else
             {
                 context.Response.StatusCode = (int)HttpStatusCode.NotFound;
-                context.Response.StatusDescription = "Resource not found in embedded assets";
+                context.Response.StatusDescription = "Resource not found on disk or embedded";
+                OnLog?.Invoke($"[404] Resource not found: {urlPath} (Checked: {localPath})");
             }
         }
         catch (Exception ex)
@@ -406,10 +445,11 @@ public class WebSocketServer
     {
         if (_authenticatedUsers.TryGetValue(clientGuid, out var username))
         {
+            // Send joined message first so the client knows its Id before receiving playerSpawned
+            Send(clientGuid, new WsMessage { Type = "joined", Data = JsonSerializer.SerializeToElement(new { Id = ipPort }, _jsonOptions) });
+
             var (x, y, score) = _db.GetPlayerState(username);
             _engine.AddPlayer(ipPort, username, x, y, score);
-            // Consistently use uppercase Id to match the state update
-            Send(clientGuid, new WsMessage { Type = "joined", Data = JsonSerializer.SerializeToElement(new { Id = ipPort }, _jsonOptions) });
         }
         else
         {
@@ -429,38 +469,75 @@ public class WebSocketServer
     {
         if (!_engine.IsRunning || _server == null) return;
 
-        var players = _engine.Players.Select(p => new {
-            Id = p.Id,
-            Name = p.Name,
-            Body = p.Body.Select(b => new { X = b.X, Y = b.Y }).ToList(),
-            Angle = p.Angle,
-            Score = p.Score,
-            Color = p.Color,
-            IsBot = p.IsBot
-        }).ToList();
-
-        var food = _engine.FoodItems.Select(f => new {
-            Id = f.Id,
-            Position = new { X = f.Position.X, Y = f.Position.Y },
-            Value = f.Value,
-            Color = f.Color,
-            IsPowerUp = f.IsPowerUp,
-            Type = f.Type
-        }).ToList();
-
-        var state = new
-        {
-            players,
-            food,
-            leaderboard = _engine.Players.OrderByDescending(p => p.Score).Take(10).Select(p => new { Name = p.Name, Score = p.Score, Length = p.Body.Count }).ToList(),
-            top10 = _db.GetTop10().Select(e => new { Name = e.Name, Score = e.Score, Length = (int)(15 + (int)e.Score / 2) }),
-            records24h = _db.GetTop24h().Select(e => new { Name = e.Name, Score = e.Score, Length = (int)(15 + (int)e.Score / 2) })
-        };
-
-        var json = JsonSerializer.Serialize(new WsMessage { Type = "state", Data = JsonSerializer.SerializeToElement(state, _jsonOptions) }, _jsonOptions);
+        var allPlayers = _engine.Players.ToList();
+        var allFood = _engine.FoodItems.ToList();
         
+        // Group players to avoid repeated serialization
+        var playersData = allPlayers.Select(p => {
+             List<Vector2> bodyCopy;
+             lock (p)
+             {
+                 bodyCopy = p.Body.ToList();
+             }
+             return new {
+                Id = p.Id,
+                Name = p.Name,
+                Body = bodyCopy.Select(b => new { X = b.X, Y = b.Y }).ToList(),
+                Angle = p.Angle,
+                Score = p.Score,
+                Color = p.Color,
+                IsBot = p.IsBot
+            };
+        }).ToList();
+
+        var leaderboard = allPlayers.OrderByDescending(p => p.Score).Take(10).Select(p => new { Name = p.Name, Score = p.Score, Length = p.Body.Count }).ToList();
+        var top10 = _db.GetTop10().Select(e => new { Name = e.Name, Score = e.Score, Length = (int)(15 + (int)e.Score / 2) });
+        var records24h = _db.GetTop24h().Select(e => new { Name = e.Name, Score = e.Score, Length = (int)(15 + (int)e.Score / 2) });
+
         foreach (var client in _server.ListClients())
         {
+            // Optimize: Filter food items based on player position (e.g., within 2000 units)
+            // This is crucial when having 9000+ food items
+            var player = allPlayers.FirstOrDefault(p => p.Id == client.IpPort);
+            
+            IEnumerable<object> nearbyFood;
+            if (player != null && player.Body.Count > 0)
+            {
+                var pos = player.Body[0];
+                nearbyFood = allFood
+                    .Where(f => Vector2.DistanceSquared(f.Position, pos) < 640000) // 800 units radius
+                    .Select(f => new {
+                        Id = f.Id,
+                        Position = new { X = f.Position.X, Y = f.Position.Y },
+                        Value = f.Value,
+                        Color = f.Color,
+                        IsPowerUp = f.IsPowerUp,
+                        Type = f.Type
+                    });
+            }
+            else
+            {
+                // If player position unknown (not spawned yet or spectator), send top 500 food items or empty
+                nearbyFood = allFood.Take(500).Select(f => new {
+                    Id = f.Id,
+                    Position = new { X = f.Position.X, Y = f.Position.Y },
+                    Value = f.Value,
+                    Color = f.Color,
+                    IsPowerUp = f.IsPowerUp,
+                    Type = f.Type
+                });
+            }
+
+            var state = new
+            {
+                players = playersData,
+                food = nearbyFood,
+                leaderboard,
+                top10,
+                records24h
+            };
+
+            var json = JsonSerializer.Serialize(new WsMessage { Type = "state", Data = JsonSerializer.SerializeToElement(state, _jsonOptions) }, _jsonOptions);
             _server.SendAsync(client.Guid, json);
         }
     }

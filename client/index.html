@@ -35,6 +35,24 @@
             pointer-events: none;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
             min-width: 180px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #ui:hover {
+            transform: scale(1.02);
+        }
+        #monitor {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 11px;
+            color: #00ff88;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 12px;
+            border-radius: 8px;
+            pointer-events: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         #ui h3 {
             margin: 0 0 12px 0;
@@ -178,10 +196,10 @@
                 <span>Twój wynik:</span>
                 <span id="player-score" class="stat-value">0</span>
             </div>
-            <div class="stat-item">
+            <!-- <div class="stat-item">
                 <span>Jedzonko na mapie:</span>
                 <span id="food-count" class="stat-value">0</span>
-            </div>
+            </div> -->
         </div>
         <h3>Ranking TOP 10</h3>
         <div id="leaderboard"></div>
@@ -189,7 +207,9 @@
         <div id="records-24h"></div>
     </div>
 
-    <div id="minimap-container" style="position: absolute; bottom: 20px; left: 20px; width: 200px; height: 200px; background: rgba(0,0,0,0.8); border: 2px solid #00ff88; border-radius: 12px; overflow: hidden; pointer-events: none; z-index: 1000; box-shadow: 0 0 20px rgba(0,255,136,0.3);">
+    <div id="monitor">System Online</div>
+
+    <div id="minimap-container" style="position: absolute; bottom: 20px; left: 20px; width: 200px; height: 200px; background: rgba(0,0,0,0.8); border: 2px solid #00ff88; border-radius: 50%; overflow: hidden; pointer-events: none; z-index: 1000; box-shadow: 0 0 20px rgba(0,255,136,0.3);">
         <canvas id="minimap" width="200" height="200"></canvas>
         <div style="position: absolute; bottom: 5px; width: 100%; text-align: center; color: #00ff88; font-size: 10px; font-family: sans-serif; opacity: 0.6;">TAB - Przełącz</div>
     </div>
