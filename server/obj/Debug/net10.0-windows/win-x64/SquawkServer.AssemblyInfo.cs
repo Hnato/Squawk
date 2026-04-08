@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SquawkServer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5c28802900a665977dac8a98866ea62cbfa2e75f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
 [assembly: System.Reflection.AssemblyProductAttribute("SquawkServer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SquawkServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
