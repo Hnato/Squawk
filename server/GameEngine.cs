@@ -28,8 +28,10 @@ public class GameEngine : IGameEngine
     private readonly object _foodLock = new();
     
     public IReadOnlyCollection<Player> Players => _players.Values.ToList().AsReadOnly();
+    public ConcurrentDictionary<string, Player> InternalPlayerMap => _players; // For tests only
     public List<Food> InternalFoodList => _foodItems; // For tests only
     public object InternalFoodLock => _foodLock; // For tests only
+    public ConcurrentDictionary<int, DateTime> InternalRespawnQueue => _respawnQueue; // For tests only
     public List<Food> FoodItems 
     {
         get 
@@ -96,8 +98,8 @@ public class GameEngine : IGameEngine
     private void SpawnFood(Vector2? nearPos = null, float radius = 0, bool force = false)
     {
         // Must be called within _foodLock
-        if (!IsRunning && nearPos == null && !force) return; // Only allow manual food spawn when not running
-        if (_foodItems.Count + _respawnQueue.Count >= _maxFood && !force) return; // Prevent extra food
+        if (!force && !IsRunning && nearPos == null) return; // Only allow manual food spawn when not running
+        if (!force && _foodItems.Count + _respawnQueue.Count >= _maxFood) return; // Prevent extra food
         
         Vector2 position = Vector2.Zero;
         bool positionFound = false;
@@ -164,14 +166,23 @@ public class GameEngine : IGameEngine
 
     public void Tick()
     {
-        // Removed IsRunning check for tests
+        // Maintenance: ensure exactly 4 bots with unique names
+        for (int i = 1; i <= _maxBots; i++)
+        {
+            string botName = "Bot" + i;
+            if (!_players.Values.Any(b => b.Name == botName))
+            {
+                AddBot(botName);
+            }
+        }
+
         try
         {
             UpdatePlayers();
             UpdateBots();
             CheckCollisions();
             ProcessRespawnQueue();
-            ReplenishFood();
+            if (IsRunning) ReplenishFood();
         }
         catch (Exception ex)
         {
@@ -213,16 +224,6 @@ public class GameEngine : IGameEngine
 
         var currentBots = _players.Values.Where(p => p.IsBot).ToList();
         var allPlayers = _players.Values.ToList();
-
-        // Maintain exactly 4 bots with unique names
-        for (int i = 1; i <= _maxBots; i++)
-        {
-            string botName = "Bot" + i;
-            if (!currentBots.Any(b => b.Name == botName))
-            {
-                AddBot(botName);
-            }
-        }
 
         foreach (var bot in currentBots)
         {
@@ -340,7 +341,7 @@ public class GameEngine : IGameEngine
 
         foreach (var player in playersSnapshot)
         {
-            if (player.Body.Count == 0 || player.IsDead) 
+            if (player.Body == null || player.Body.Count == 0 || player.IsDead) 
             {
                 if (player.IsDead) playersToRemove.Add(player.Id);
                 continue;
@@ -353,7 +354,11 @@ public class GameEngine : IGameEngine
                 for (int i = _foodItems.Count - 1; i >= 0; i--)
                 {
                     var food = _foodItems[i];
-                    if (Vector2.DistanceSquared(head, food.Position) < 625) // 25^2
+                    var distSq = Vector2.DistanceSquared(head, food.Position);
+                    // DEBUG: Log if we are close but not colliding
+                    // if (distSq < 1000) OnLog?.Invoke($"DEBUG: Head at {head}, Food at {food.Position}, DistSq: {distSq}");
+                    
+                    if (distSq < 625) // 25^2
                     {
                         if (food.IsPowerUp)
                         {
@@ -421,7 +426,6 @@ public class GameEngine : IGameEngine
         lock (_foodLock)
         {
             // Only replenish if not waiting for respawn and below target
-            // and NOT in unit tests where we want exact count
             if (IsRunning && _maxFood > 0) 
             {
                 while (_foodItems.Count + _respawnQueue.Count < _maxFood) SpawnFood();

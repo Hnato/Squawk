@@ -1,67 +1,62 @@
-# Squawk Multiplayer Parrot Battle - Server & Control Panel
+# 🦜 Squawk: Multiplayer Parrot Battle
 
-A high-performance multiplayer game server and aesthetic control panel for the **Squawk** game. This project provides a robust backend for parrot battles, featuring real-time synchronization, bot AI, and a modern desktop management interface built with **Avalonia UI**.
+Wysokowydajny serwer gier wieloosobowych z estetycznym panelem sterowania dla gry **Squawk**. Projekt oferuje solidny backend dla bitew papug, synchronizację w czasie rzeczywistym, zaawansowane AI botów oraz nowoczesny interfejs zarządzania zbudowany w **Avalonia UI**.
 
-## 🚀 Key Features
+## 🚀 Kluczowe Funkcje
 
-- **High-Performance Game Engine**: Real-time parrot movement, collisions, and energy mechanics.
-- **WebSocket Communication**: Powered by `Fleck` for low-latency client-server interaction.
-- **Embedded Web Server**: Serves the game client directly from the executable resources.
-- **Aesthetic Control Panel**: A jungle-themed UI built with `Avalonia UI` to manage:
-  - Game Engine (Start/Stop)
-  - Network Services (WebSocket & HTTP)
-  - Bot AI (Enable/Disable toggle)
-- **Real-time Logging**: Live console output integrated into the desktop application.
-- **Single-File Executable**: Fully self-contained build for easy deployment.
+- **Silnik Gry High-Performance**: Obsługa ruchu papug, kolizji i mechaniki energii w czasie rzeczywistym na mapie o promieniu 1500 jednostek.
+- **Komunikacja WebSocket**: Niskolatencyjna interakcja klient-serwer napędzana przez `WatsonWebsocket`.
+- **Zintegrowany Web Server**: Serwuje klienta gry bezpośrednio z zasobów pliku wykonywalnego.
+- **Panel Sterowania**: Nowoczesny interfejs w klimacie dżungli (Avalonia UI) umożliwiający:
+  - Zarządzanie silnikiem gry (Start/Stop).
+  - Monitoring usług sieciowych (WebSocket & HTTP).
+  - Kontrolę botów (włączanie/wyłączanie, agresywność).
+- **System Botów**: Zawsze aktywna czwórka botów (Bot1-Bot4) z unikalnym systemem punktacji i inteligentnym zbieraniem jedzenia.
+- **Dynamiczne Jedzenie**: Stała liczba 400 punktów jedzenia na mapie z inteligentnym systemem respawnu (3 sekundy opóźnienia).
+- **Single-File Executable**: W pełni samowystarczalny build `.exe` (wszystkie DLL i zasoby klienta w jednym pliku).
 
-## 🛠 Tech Stack
+## 🛠 Stos Technologiczny
 
-- **Server Core**: .NET 10.0 (Windows-compatible)
-- **GUI Framework**: Avalonia UI (Modern, Cross-platform styling)
-- **Networking**: Fleck (WebSockets), TcpListener (HTTP)
-- **Serialization**: Newtonsoft.Json
-- **Game Client**: Phaser 3 (JavaScript)
+- **Backend**: .NET 10.0 (C#)
+- **GUI**: Avalonia UI (Modern XAML)
+- **Networking**: WatsonWebsocket, TcpListener
+- **Baza Danych**: SQLite (Ranking TOP 10 i statystyki 24h)
+- **Frontend**: HTML5 Canvas (Pure JS) - zoptymalizowany pod kątem wydajności.
 
-## 📁 Project Structure
+## 📁 Struktura Projektu
 
-- `Server/`: The core logic, networking, and game mechanics.
-- `AvaloniaPanel/`: The modern desktop interface that controls the server.
-- `Client/`: Frontend game assets and Phaser 3 logic (embedded into the server).
+- `server/`: Rdzeń logiki, networking i mechanika gry.
+- `server/SquawkTests/`: Testy jednostkowe (xUnit) weryfikujące mechanikę silnika.
+- `client/`: Zasoby frontendowe i logika renderowania Canvas (osadzone w serwerze).
+- `build.ps1`: Zaawansowany skrypt automatyzujący proces kompilacji do jednego pliku .exe.
 
-## 🔨 Build and Run
+## 🔨 Budowanie i Uruchamianie
 
-### Prerequisites
+### Wymagania
 - .NET 10 SDK
 
-### Building the Project
-To build the complete solution:
-```bash
-dotnet build
+### Szybka Kompilacja (Skrypt PowerShell)
+Aby wygenerować gotowy plik `.exe` w głównym katalogu:
+```powershell
+.\build.ps1
 ```
 
-### Running the Control Panel
-Navigate to the `AvaloniaPanel` directory and run:
-```bash
-dotnet run --project AvaloniaPanel/Squawk.AvaloniaPanel.csproj -c Debug
+### Uruchamianie Testów
+```powershell
+dotnet test server/SquawkTests/SquawkTests.csproj
 ```
 
-## 📜 Server Logic Details
+## 📜 Detale Techniczne
 
-### Networking
-- **WebSocket Port**: `5004` (Game state updates)
-- **HTTP Port**: `5006` (Serves the game client assets)
+### Sieć
+- **Port WebSocket**: `5005` (Aktualizacje stanu gry)
+- **Port HTTP**: `5006` (Serwowanie klienta gry)
 
-### Game Mechanics
-The server manages the "World" state, including:
-- **Parrots**: Position, direction, energy, and segment management.
-- **Feathers**: Energy pickups spawned across the map.
-- **Bots**: Automated AI parrots that wander, feed, and evade danger.
+### Mechanika Świata
+Serwer zarządza pełnym stanem świata, w tym:
+- **Papugi**: Zarządzanie pozycją, kątem obrotu i segmentami ciała (dynamiczne skalowanie rozmiaru).
+- **Bezpieczny Spawn**: Algorytm wyszukujący wolną przestrzeń na mapie, zapobiegający kolizjom na starcie.
+- **Ranking**: System TOP 10 aktualizowany co 500ms, przesyłający nazwę, punkty oraz aktualną długość węża.
 
-### Embedded Resources
-The server serves the `Client/` files using an embedded resource provider. This ensures that the `SquawkServer.exe` is the only file needed to host the entire game.
-
-## 🤝 Contributing
-Developed by **Hnato.**
-
-## 📄 License
-MIT License - see the LICENSE file for details.
+---
+Developed with ❤️ by **Hnato.**

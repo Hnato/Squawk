@@ -54,9 +54,10 @@ public class GameEngineTests
     {
         var engine = new GameEngine();
         engine.BotsEnabled = true;
-        engine.Start();
+        // engine.Start(); // We call Tick() to trigger maintenance
         
-        // Wait for bots to be added in Start()
+        engine.Tick();
+        
         var bots = engine.Players.Where(p => p.IsBot).ToList();
         Assert.Equal(4, bots.Count);
         
@@ -72,16 +73,14 @@ public class GameEngineTests
     public void Food_Should_Respawn_After_3_Seconds()
     {
         var engine = new GameEngine();
-        // engine.Start() is NOT called, so automatic food spawn is disabled
         
         var internalFood = engine.InternalFoodList;
         var internalLock = engine.InternalFoodLock;
         
         lock(internalLock) {
             internalFood.Clear();
-            // Add exactly 10 items for a cleaner test
-            for(int i=0; i<10; i++) {
-                internalFood.Add(new Food { Id = i, Position = new Vector2(i, i) });
+            for(int i=0; i<400; i++) {
+                internalFood.Add(new Food { Id = i, Position = new Vector2(i*100, i*100), Value = 1 });
             }
         }
 
@@ -90,25 +89,30 @@ public class GameEngineTests
             food = internalFood.First();
         }
         
-        // Add player
-        engine.AddPlayer("p1", "P1");
-        var p1 = engine.Players.First(p => p.Name == "P1");
-        p1.Body[0] = food.Position; 
+        // Use direct player map access with proper initialization
+        var p1 = new Player { 
+            Id = "p1", 
+            Name = "P1", 
+            Body = new List<Vector2> { new Vector2(food.Position.X, food.Position.Y) },
+            IsDead = false,
+            Speed = 3.0f,
+            Score = 0
+        };
+        engine.InternalPlayerMap.TryAdd("p1", p1);
         
-        int initialCount = 10;
-        engine.Tick(); // Detect collision
+        // Manually trigger collision logic
+        engine.Tick(); 
         
-        lock(internalLock) {
-            Assert.Equal(initialCount - 1, internalFood.Count);
-        }
+        // Check if food was removed and added to queue
+        bool inQueue = engine.InternalRespawnQueue.ContainsKey(food.Id);
+        Assert.True(inQueue, $"Food {food.Id} should be in respawn queue after collision. Player at {p1.Body[0]}, Food at {food.Position}");
         
-        // Wait 3.5 seconds
         System.Threading.Thread.Sleep(3500);
-        
-        engine.Tick(); // Process respawn
+        engine.Tick(); 
         
         lock(internalLock) {
-            Assert.Equal(initialCount, internalFood.Count);
+            Assert.Contains(food.Id, internalFood.Select(f => f.Id));
+            Assert.Equal(400, internalFood.Count);
         }
     }
 }
