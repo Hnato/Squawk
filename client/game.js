@@ -96,9 +96,13 @@ function setupUI() {
 }
 
 function connectToServer(username, password, isRegister) {
-    const currentPort = window.location.port ? parseInt(window.location.port) : 5006;
+    const currentPort = window.location.port ? parseInt(window.location.port) : 5007;
+    // WS is usually WebPort - 1 or specifically 5006
     const wsPort = 5006;
-    const wsHost = window.location.hostname || '127.0.0.1';
+    let wsHost = window.location.hostname;
+    
+    // Fallback for local files or invalid hostnames
+    if (!wsHost || wsHost === "0.0.0.0") wsHost = "127.0.0.1";
     
     if (socket) socket.close();
     socket = new WebSocket(`ws://${wsHost}:${wsPort}`);

@@ -202,6 +202,8 @@ public class WebSocketServer
 
                 Task.Run(HandleHttpRequests);
                 _updateTimer.Start();
+
+                OnLog?.Invoke($"[SERVER] SUCCESS! Open http://localhost:{webPort} in your browser.");
             }
             catch (Exception ex)
             {
