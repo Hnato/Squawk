@@ -25,12 +25,12 @@ public class GameEngine : IGameEngine
 {
     private readonly ConcurrentDictionary<string, Player> _players = [];
     private List<Food> _foodItems = [];
-    private readonly System.Threading.Lock _foodLock = new();
+    private readonly object _foodLock = new object();
     
     public IReadOnlyCollection<Player> Players => _players.Values.ToList().AsReadOnly();
     public ConcurrentDictionary<string, Player> InternalPlayerMap => _players; // For tests only
     public List<Food> InternalFoodList => _foodItems; // For tests only
-    public System.Threading.Lock InternalFoodLock => _foodLock; // For tests only
+    public object InternalFoodLock => _foodLock; // For tests only
     public ConcurrentDictionary<int, DateTime> InternalRespawnQueue => _respawnQueue; // For tests only
     public List<Food> FoodItems 
     {
@@ -45,8 +45,8 @@ public class GameEngine : IGameEngine
 
     private readonly Random _random = new();
     private readonly float _mapRadius = 1950f;
-    private readonly int _maxFood = 9000; // Fixed 9000 pieces of food
-    private readonly int _maxBots = 12; // Exactly 12 bots
+    private readonly int _maxFood = 400; // Fixed 400 pieces of food (README says so)
+    private readonly int _maxBots = 4; // Exactly 4 bots (README says so)
     private readonly ConcurrentDictionary<int, DateTime> _respawnQueue = new();
 
     public event Action<string>? OnLog;

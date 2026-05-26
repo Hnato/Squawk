@@ -25,6 +25,54 @@ const COLORS = {
     text: '#ffffff'
 };
 
+let authView;
+let activeSocketGeneration = 0;
+let serverConfigPromise;
+
+function getMonitor() {
+    return document.getElementById('monitor');
+}
+
+function showAuthError(message) {
+    if (!authView) return;
+    authView.errorMsg.textContent = message;
+}
+
+function clearAuthError() {
+    if (!authView) return;
+    authView.errorMsg.textContent = '';
+}
+
+function setMonitorState(message, color = '#00ff88') {
+    const monitor = getMonitor();
+    monitor.textContent = message;
+    monitor.style.color = color;
+}
+
+async function getServerConfig() {
+    if (!serverConfigPromise) {
+        serverConfigPromise = fetch('/config.json', { cache: 'no-store' })
+            .then(async response => {
+                if (!response.ok) {
+                    throw new Error(`Config HTTP ${response.status}`);
+                }
+
+                const config = await response.json();
+                if (!config.wsPort) {
+                    throw new Error('Brak portu WebSocket w konfiguracji');
+                }
+
+                return config;
+            })
+            .catch(error => {
+                console.warn('Nie udało się pobrać konfiguracji serwera, używam wartości domyślnych.', error);
+                return { wsPort: 5006, httpPort: 5007 };
+            });
+    }
+
+    return serverConfigPromise;
+}
+
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -55,59 +103,170 @@ function setupUI() {
     const switchLink = document.getElementById('switch-link');
     const playAgainBtn = document.getElementById('play-again-btn');
     const logoutBtn = document.getElementById('logout-btn');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const errorMsg = document.getElementById('error-msg');
     
-    const savedUsername = localStorage.getItem('squawk_username');
-    if (savedUsername) document.getElementById('username').value = savedUsername;
+    authView = {
+        authModal,
+        deathModal,
+        authBtn,
+        switchLink,
+        usernameInput,
+        passwordInput,
+        errorMsg,
+        isRegisterMode: false,
+        isPending: false
+    };
 
-    let isRegisterMode = false;
-    switchLink.addEventListener('click', () => {
-        isRegisterMode = !isRegisterMode;
-        document.getElementById('modal-title').textContent = isRegisterMode ? 'Rejestracja' : 'Logowanie';
-        authBtn.textContent = isRegisterMode ? 'Zarejestruj się' : 'Zaloguj się';
-        document.getElementById('switch-text').textContent = isRegisterMode ? 'Masz już konto?' : 'Nie masz konta?';
-        switchLink.textContent = isRegisterMode ? 'Zaloguj się' : 'Zarejestruj się';
+    const savedUsername = localStorage.getItem('squawk_username');
+    if (savedUsername) usernameInput.value = savedUsername;
+
+    function updateAuthUi() {
+        const actionLabel = authView.isRegisterMode ? 'Zarejestruj się' : 'Zaloguj się';
+        document.getElementById('modal-title').textContent = authView.isRegisterMode ? 'Rejestracja' : 'Logowanie';
+        authBtn.textContent = authView.isPending
+            ? (authView.isRegisterMode ? 'Rejestrowanie...' : 'Logowanie...')
+            : actionLabel;
+        authBtn.disabled = authView.isPending;
+        usernameInput.disabled = authView.isPending;
+        passwordInput.disabled = authView.isPending;
+        switchLink.textContent = authView.isRegisterMode ? 'Zaloguj się' : 'Zarejestruj się';
+        document.getElementById('switch-text').textContent = authView.isRegisterMode ? 'Masz już konto?' : 'Nie masz konta?';
+    }
+
+    function setAuthPending(isPending) {
+        authView.isPending = isPending;
+        updateAuthUi();
+    }
+
+    function validateInputs(username, password) {
+        if (!username || username.trim().length < 3) {
+            showAuthError('Nazwa użytkownika musi mieć co najmniej 3 znaki.');
+            return false;
+        }
+
+        if (username.length > 24) {
+            showAuthError('Nazwa użytkownika może mieć maksymalnie 24 znaki.');
+            return false;
+        }
+
+        if (!password || password.length < 4) {
+            showAuthError('Hasło musi mieć co najmniej 4 znaki.');
+            return false;
+        }
+
+        if (password.length > 64) {
+            showAuthError('Hasło może mieć maksymalnie 64 znaki.');
+            return false;
+        }
+
+        return true;
+    }
+
+    async function submitAuth() {
+        if (authView.isPending) return;
+
+        clearAuthError();
+        const user = usernameInput.value.trim();
+        const pass = passwordInput.value;
+
+        if (!validateInputs(user, pass)) {
+            return;
+        }
+
+        localStorage.setItem('squawk_username', user);
+        setAuthPending(true);
+
+        try {
+            await connectToServer(user, pass, authView.isRegisterMode);
+        } catch (error) {
+            console.error('Auth connect error', error);
+            showAuthError('Nie udało się połączyć z serwerem uwierzytelniania.');
+            setAuthPending(false);
+        }
+    }
+
+    switchLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (authView.isPending) return;
+        clearAuthError();
+        authView.isRegisterMode = !authView.isRegisterMode;
+        updateAuthUi();
     });
 
-    authBtn.addEventListener('click', () => {
-        const user = document.getElementById('username').value;
-        const pass = document.getElementById('password').value;
-        if (user && pass) {
-            localStorage.setItem('squawk_username', user);
-            connectToServer(user, pass, isRegisterMode);
+    authBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        void submitAuth();
+    });
+
+    usernameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            passwordInput.focus();
+        }
+    });
+    
+    passwordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            void submitAuth();
         }
     });
 
+    usernameInput.addEventListener('input', clearAuthError);
+    passwordInput.addEventListener('input', clearAuthError);
+
     playAgainBtn.addEventListener('click', () => {
         deathModal.style.display = 'none';
-        const user = localStorage.getItem('squawk_username');
-        // Re-join without full auth if we have a session (handled by server if we don't close socket)
-        if (socket && socket.readyState === WebSocket.OPEN) {
-            socket.send(JSON.stringify({ Type: 'join', Data: { name: user } }));
+        if (socket && socket.readyState === WebSocket.OPEN && isAuthorized) {
+            socket.send(JSON.stringify({ Type: 'join', Data: {} }));
         } else {
             authModal.style.display = 'flex';
         }
     });
 
     logoutBtn.addEventListener('click', () => {
+        activeSocketGeneration++;
+        isAuthorized = false;
+        playerId = null;
         deathModal.style.display = 'none';
         authModal.style.display = 'flex';
-        if (socket) socket.close();
+        clearAuthError();
+        setAuthPending(false);
+        if (socket) {
+            socket.onclose = null;
+            socket.close();
+            socket = null;
+        }
+        setMonitorState('WYLOGOWANO', '#ffcc00');
     });
+
+    updateAuthUi();
 }
 
-function connectToServer(username, password, isRegister) {
-    const currentPort = window.location.port ? parseInt(window.location.port) : 5007;
-    // WS is usually WebPort - 1 or specifically 5006
-    const wsPort = 5006;
+async function connectToServer(username, password, isRegister) {
+    const config = await getServerConfig();
+    const wsPort = config.wsPort || 5006;
     let wsHost = window.location.hostname;
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     
     // Fallback for local files or invalid hostnames
     if (!wsHost || wsHost === "0.0.0.0") wsHost = "127.0.0.1";
-    
-    if (socket) socket.close();
-    socket = new WebSocket(`ws://${wsHost}:${wsPort}`);
+
+    if (socket) {
+        socket.onclose = null;
+        socket.onerror = null;
+        socket.close();
+    }
+
+    const connectionGeneration = ++activeSocketGeneration;
+    socket = new WebSocket(`${wsProtocol}://${wsHost}:${wsPort}`);
+    setMonitorState('ŁĄCZENIE...', '#ffcc00');
 
     socket.onopen = () => {
+        if (connectionGeneration !== activeSocketGeneration) return;
+        setMonitorState('UWIERZYTELNIANIE...', '#ffcc00');
         socket.send(JSON.stringify({
             Type: 'auth',
             Data: { username, password, register: isRegister }
@@ -115,21 +274,38 @@ function connectToServer(username, password, isRegister) {
     };
 
     socket.onmessage = (event) => {
+        if (connectionGeneration !== activeSocketGeneration) return;
         const msg = JSON.parse(event.data);
         handleServerMessage(msg, username);
     };
 
     socket.onclose = (event) => {
+        if (connectionGeneration !== activeSocketGeneration) return;
         isAuthorized = false;
         console.warn(`[MONITOR] Socket closed: Code ${event.code}, Reason: ${event.reason}`);
-        document.getElementById('monitor').textContent = "OFFLINE: " + (event.reason || "Server Closed");
-        document.getElementById('monitor').style.color = "#ff4444";
-        document.getElementById('auth-modal').style.display = 'flex';
+        setMonitorState(`OFFLINE: ${event.reason || 'Server Closed'}`, '#ff4444');
+        if (authView) {
+            authView.authModal.style.display = 'flex';
+            authView.isPending = false;
+            updateAuthUiState();
+        }
     };
     
     socket.onerror = (err) => {
+        if (connectionGeneration !== activeSocketGeneration) return;
         console.error("[MONITOR] WebSocket Error: ", err);
-        document.getElementById('monitor').textContent = "NETWORK ERROR";
+        setMonitorState('NETWORK ERROR', '#ff4444');
+        showAuthError('Nie udało się połączyć z serwerem.');
+    };
+
+    function updateAuthUiState() {
+        if (!authView) return;
+        authView.authBtn.disabled = authView.isPending;
+        authView.usernameInput.disabled = authView.isPending;
+        authView.passwordInput.disabled = authView.isPending;
+        authView.authBtn.textContent = authView.isPending
+            ? (authView.isRegisterMode ? 'Rejestrowanie...' : 'Logowanie...')
+            : (authView.isRegisterMode ? 'Zarejestruj się' : 'Zaloguj się');
     };
 }
 
@@ -137,18 +313,34 @@ function handleServerMessage(msg, username) {
     switch (msg.Type) {
         case 'auth_response':
             if (msg.Data.success) {
-                document.getElementById('auth-modal').style.display = 'none';
+                clearAuthError();
                 isAuthorized = true;
-                // Wait a bit before joining to ensure everything is ready
-                setTimeout(() => {
-                    socket.send(JSON.stringify({ Type: 'join', Data: { name: username } }));
-                }, 100);
+                setMonitorState('AUTORYZACJA OK', '#00ff88');
+                socket.send(JSON.stringify({ Type: 'join', Data: { name: username } }));
             } else {
-                document.getElementById('error-msg').textContent = msg.Data.message;
+                isAuthorized = false;
+                showAuthError(msg.Data.message || 'Logowanie nie powiodło się.');
+                if (authView) {
+                    authView.isPending = false;
+                    authView.authBtn.disabled = false;
+                    authView.usernameInput.disabled = false;
+                    authView.passwordInput.disabled = false;
+                    authView.authBtn.textContent = authView.isRegisterMode ? 'Zarejestruj się' : 'Zaloguj się';
+                }
+                setMonitorState('BŁĄD AUTORYZACJI', '#ff4444');
             }
             break;
         case 'joined':
             playerId = msg.Data.Id;
+            if (authView) {
+                authView.isPending = false;
+                authView.authModal.style.display = 'none';
+                authView.authBtn.disabled = false;
+                authView.usernameInput.disabled = false;
+                authView.passwordInput.disabled = false;
+                authView.authBtn.textContent = authView.isRegisterMode ? 'Zarejestruj się' : 'Zaloguj się';
+            }
+            setMonitorState('ONLINE', '#00ff88');
             break;
         case 'playerSpawned':
             if (msg.Data.Id === playerId) {
@@ -156,6 +348,19 @@ function handleServerMessage(msg, username) {
                 camera.y = msg.Data.y;
                 console.log(`Player spawned at ${camera.x}, ${camera.y}`);
             }
+            break;
+        case 'auth_required':
+            isAuthorized = false;
+            showAuthError(msg.Data.message || 'Zaloguj się, aby kontynuować.');
+            if (authView) {
+                authView.isPending = false;
+                authView.authModal.style.display = 'flex';
+                authView.authBtn.disabled = false;
+                authView.usernameInput.disabled = false;
+                authView.passwordInput.disabled = false;
+                authView.authBtn.textContent = authView.isRegisterMode ? 'Zarejestruj się' : 'Zaloguj się';
+            }
+            setMonitorState('WYMAGANE LOGOWANIE', '#ff4444');
             break;
         case 'state':
             updateState(msg.Data);

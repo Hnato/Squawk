@@ -165,7 +165,8 @@
             color: #ff4d4d;
             font-size: 13px;
             margin-top: 10px;
-            height: 18px;
+            min-height: 18px;
+            display: block;
         }
         #stats-panel {
             margin-bottom: 20px;
@@ -219,19 +220,19 @@
             <h2 id="modal-title">Logowanie</h2>
             <div class="form-group">
                 <label>Nazwa użytkownika</label>
-                <input type="text" id="username" placeholder="Twoja papuga...">
+                <input type="text" id="username" placeholder="Twoja papuga..." autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="24">
             </div>
             <div class="form-group">
                 <label>Hasło</label>
-                <input type="password" id="password" placeholder="••••••••">
+                <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" maxlength="64">
             </div>
             <div id="error-msg"></div>
             <div class="modal-buttons">
-                <button id="auth-btn" class="btn btn-primary">Zaloguj się</button>
+                <button id="auth-btn" type="button" class="btn btn-primary">Zaloguj się</button>
             </div>
             <div class="switch-auth">
                 <span id="switch-text">Nie masz konta?</span> 
-                <a id="switch-link">Zarejestruj się</a>
+                <a id="switch-link" href="#">Zarejestruj się</a>
             </div>
         </div>
     </div>
@@ -245,13 +246,12 @@
                 <span id="final-score" class="stat-value">0</span>
             </div>
             <div class="modal-buttons">
-                <button id="play-again-btn" class="btn btn-primary">Zagraj ponownie</button>
-                <button id="logout-btn" class="btn btn-secondary">Wyloguj</button>
+                <button id="play-again-btn" type="button" class="btn btn-primary">Zagraj ponownie</button>
+                <button id="logout-btn" type="button" class="btn btn-secondary">Wyloguj</button>
             </div>
         </div>
     </div>
 
     <script src="game.js"></script>
 </body>
-</html>
 </html>

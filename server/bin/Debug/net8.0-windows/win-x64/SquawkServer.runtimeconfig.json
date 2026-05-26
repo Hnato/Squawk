@@ -1,0 +1,18 @@
+{
+  "runtimeOptions": {
+    "tfm": "net8.0",
+    "includedFrameworks": [
+      {
+        "name": "Microsoft.NETCore.App",
+        "version": "8.0.25"
+      },
+      {
+        "name": "Microsoft.WindowsDesktop.App",
+        "version": "8.0.25"
+      }
+    ],
+    "configProperties": {
+      "CSWINRT_USE_WINDOWS_UI_XAML_PROJECTIONS": false
+    }
+  }
+}

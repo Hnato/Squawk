@@ -19,9 +19,11 @@ public class WebSocketServer
     private readonly int _port;
     private HttpListener? _httpListener;
     private bool _isRunning = false;
-    private readonly System.Threading.Lock _serverLock = new();
+    private readonly object _serverLock = new object();
     private readonly ConcurrentDictionary<Guid, string> _authenticatedUsers = [];
     private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNamingPolicy = null };
+    private int _activeWebSocketPort;
+    private int _activeHttpPort;
 
     public event Action<string>? OnLog;
 
@@ -116,6 +118,7 @@ public class WebSocketServer
                             _server.MessageReceived += OnMessageReceived;
                             _server.Start();
                             wsStarted = true;
+                            _activeWebSocketPort = wsPort;
                             OnLog?.Invoke($"WebSocket server started on {host}:{wsPort}");
                             break;
                         }
@@ -133,6 +136,7 @@ public class WebSocketServer
                             _server.MessageReceived += OnMessageReceived;
                             _server.Start();
                             wsStarted = true;
+                            _activeWebSocketPort = wsPort;
                             OnLog?.Invoke($"WebSocket server started on {host}:{wsPort}");
                             break;
                         }
@@ -148,44 +152,42 @@ public class WebSocketServer
                 if (!wsStarted) throw new Exception($"WebSocket failure: {lastWsEx?.Message}", lastWsEx);
 
                 // --- 2. HTTP Web Server (HttpListener) ---
-                _httpListener = new HttpListener();
+                _httpListener = null;
                 int webPort = 5007; // 5006 is WS, 5007 is Web
                 bool webStarted = false;
                 Exception? lastWebEx = null;
 
                 for (int i = 0; i < 50; i++)
                 {
+                    HttpListener? listener = null;
                     try 
                     {
-                        _httpListener.Prefixes.Clear();
+                        listener = new HttpListener();
                         try 
                         {
                             // Try multiple wildcards. "+" is the most permissive for HttpListener.
-                            _httpListener.Prefixes.Add($"http://+:{webPort}/");
-                            _httpListener.Start();
+                            listener.Prefixes.Add($"http://+:{webPort}/");
+                            listener.Start();
+                            _httpListener = listener;
+                            listener = null;
                             webStarted = true;
+                            _activeHttpPort = webPort;
                             OnLog?.Invoke($"[SERVER] Web server online on port {webPort} (Global)");
                             break;
                         }
                         catch (HttpListenerException ex) when (ex.ErrorCode == 5) // Access Denied
                         {
                             OnLog?.Invoke("[SERVER] Admin rights required for global wildcard. Using local fallback...");
-                            _httpListener.Prefixes.Clear();
-                            _httpListener.Prefixes.Add($"http://localhost:{webPort}/");
-                            _httpListener.Prefixes.Add($"http://127.0.0.1:{webPort}/");
-                            _httpListener.Prefixes.Add($"http://0.0.0.0:{webPort}/"); // Some environments allow this
-                            
-                            try {
-                                var ips = Dns.GetHostAddresses(Dns.GetHostName());
-                                foreach (var ip in ips) {
-                                    if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork) {
-                                        _httpListener.Prefixes.Add($"http://{ip}:{webPort}/");
-                                    }
-                                }
-                            } catch { }
+                            listener?.Close();
+                            listener = new HttpListener();
+                            listener.Prefixes.Add($"http://localhost:{webPort}/");
+                            listener.Prefixes.Add($"http://127.0.0.1:{webPort}/");
 
-                            _httpListener.Start();
+                            listener.Start();
+                            _httpListener = listener;
+                            listener = null;
                             webStarted = true;
+                            _activeHttpPort = webPort;
                             OnLog?.Invoke($"[SERVER] Web server online on port {webPort} (Local only)");
                             break;
                         }
@@ -195,6 +197,13 @@ public class WebSocketServer
                         lastWebEx = ex;
                         OnLog?.Invoke($"Web attempt {i+1} (port {webPort}) failed: {ex.Message}");
                         webPort++;
+                    }
+                    finally
+                    {
+                        if (listener != null)
+                        {
+                            try { listener.Close(); } catch { }
+                        }
                     }
                 }
 
@@ -247,6 +256,8 @@ public class WebSocketServer
             }
             catch { }
 
+            _activeWebSocketPort = 0;
+            _activeHttpPort = 0;
             OnLog?.Invoke("Servers stopped.");
         }
     }
@@ -282,6 +293,18 @@ public class WebSocketServer
     {
         try
         {
+            string urlPath = context.Request.Url?.LocalPath ?? "/";
+
+            if (urlPath.Equals("/config.json", StringComparison.OrdinalIgnoreCase))
+            {
+                WriteJsonResponse(context, new
+                {
+                    wsPort = _activeWebSocketPort,
+                    httpPort = _activeHttpPort
+                });
+                return;
+            }
+
             // Only allow GET method for serving static files
             if (context.Request.HttpMethod != "GET")
             {
@@ -289,8 +312,6 @@ public class WebSocketServer
                 context.Response.StatusDescription = "Method Not Allowed - Squawk server only supports GET for static assets";
                 return;
             }
-
-            string urlPath = context.Request.Url?.LocalPath ?? "/";
             if (urlPath == "/") urlPath = "/index.html";
             
             // 1. Try disk first (Development/Local)
@@ -369,6 +390,14 @@ public class WebSocketServer
         };
     }
 
+    private void WriteJsonResponse(HttpListenerContext context, object payload)
+    {
+        byte[] buffer = JsonSerializer.SerializeToUtf8Bytes(payload, _jsonOptions);
+        context.Response.ContentLength64 = buffer.Length;
+        context.Response.ContentType = "application/json";
+        context.Response.OutputStream.Write(buffer, 0, buffer.Length);
+    }
+
     private void OnMessageReceived(object? sender, MessageReceivedEventArgs e)
     {
         try
@@ -420,13 +449,24 @@ public class WebSocketServer
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(password) || password.Length < 4)
+        {
+            Send(clientGuid, new WsMessage { Type = "auth_response", Data = JsonSerializer.SerializeToElement(new { success = false, message = "Hasło musi mieć min. 4 znaki" }, _jsonOptions) });
+            return;
+        }
+
+        username = username.Trim();
+
         bool success = false;
         string message = "";
 
         if (isRegister)
         {
-            success = _db.RegisterUser(username, password);
-            message = success ? "Zarejestrowano pomyślnie" : "Użytkownik już istnieje lub błąd bazy";
+            success = _db.RegisterUser(username, password, out message);
+            if (success)
+            {
+                message = "Zarejestrowano pomyślnie";
+            }
         }
         else
         {
@@ -456,6 +496,11 @@ public class WebSocketServer
         else
         {
             OnLog?.Invoke($"Unauthenticated join attempt from {ipPort}");
+            Send(clientGuid, new WsMessage
+            {
+                Type = "auth_required",
+                Data = JsonSerializer.SerializeToElement(new { message = "Sesja wygasła. Zaloguj się ponownie." }, _jsonOptions)
+            });
         }
     }
 

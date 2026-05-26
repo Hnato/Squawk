@@ -2,23 +2,30 @@ using Microsoft.Data.Sqlite;
 using Dapper;
 using SquawkServer.Models;
 using BCrypt.Net;
+
 namespace SquawkServer;
 
-public class DatabaseManager(string dbPath = "squawk.db")
+public class DatabaseManager
 {
-    private readonly string _connectionString = $"Data Source={dbPath};";
+    private readonly string _connectionString;
+    private readonly object _initLock = new();
+    private bool _initialized;
 
-    static DatabaseManager()
+    public DatabaseManager(string dbPath = "squawk.db")
     {
-        // One-time initialization if needed
+        _connectionString = $"Data Source={dbPath};";
     }
 
-    private bool _initialized = false;
     private void EnsureInitialized()
     {
         if (_initialized) return;
-        _initialized = true;
-        Initialize();
+
+        lock (_initLock)
+        {
+            if (_initialized) return;
+            Initialize();
+            _initialized = true;
+        }
     }
 
     private void Initialize()
@@ -47,13 +54,15 @@ public class DatabaseManager(string dbPath = "squawk.db")
 
     public void AddScore(string username, int score)
     {
+        EnsureInitialized();
         using var connection = new SqliteConnection(_connectionString);
         connection.Execute("INSERT INTO Scores (Username, Score) VALUES (@username, @score)", 
-            new { username, score });
+            new { username = username.Trim(), score });
     }
 
     public IEnumerable<dynamic> GetTop10()
     {
+        EnsureInitialized();
         using var connection = new SqliteConnection(_connectionString);
         return connection.Query(@"
             SELECT Username as Name, MAX(Score) as Score 
@@ -65,6 +74,7 @@ public class DatabaseManager(string dbPath = "squawk.db")
 
     public IEnumerable<dynamic> GetTop24h()
     {
+        EnsureInitialized();
         using var connection = new SqliteConnection(_connectionString);
         return connection.Query(@"
             SELECT Username as Name, MAX(Score) as Score 
@@ -77,23 +87,25 @@ public class DatabaseManager(string dbPath = "squawk.db")
 
     public void SavePlayerState(string username, float x, float y, int score)
     {
+        EnsureInitialized();
         using var connection = new SqliteConnection(_connectionString);
         connection.Execute(@"
             UPDATE Users 
             SET LastPosX = @x, LastPosY = @y, LastScore = @score 
             WHERE Username = @username",
-            new { username, x, y, score });
+            new { username = username.Trim(), x, y, score });
         
         if (score > 0) AddScore(username, score);
     }
 
     public (float x, float y, int score) GetPlayerState(string username)
     {
+        EnsureInitialized();
         using var connection = new SqliteConnection(_connectionString);
         var state = connection.QueryFirstOrDefault(@"
             SELECT LastPosX as x, LastPosY as y, LastScore as score 
             FROM Users WHERE Username = @username",
-            new { username });
+            new { username = username.Trim() });
         
         if (state != null)
         {
@@ -102,24 +114,48 @@ public class DatabaseManager(string dbPath = "squawk.db")
         return (1500f, 1500f, 0);
     }
 
-    public bool RegisterUser(string username, string password)
+    public bool RegisterUser(string username, string password, out string errorMessage)
     {
+        EnsureInitialized();
+        errorMessage = string.Empty;
         using var connection = new SqliteConnection(_connectionString);
         try
         {
+            username = username.Trim();
+
+            if (string.IsNullOrWhiteSpace(username) || username.Length < 3)
+            {
+                errorMessage = "Nazwa użytkownika musi mieć min. 3 znaki";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(password) || password.Length < 4)
+            {
+                errorMessage = "Hasło musi mieć min. 4 znaki";
+                return false;
+            }
+
             var hash = BCrypt.Net.BCrypt.HashPassword(password);
             connection.Execute("INSERT INTO Users (Username, PasswordHash) VALUES (@Username, @PasswordHash)",
                 new { Username = username, PasswordHash = hash });
             return true;
         }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 19)
+        {
+            errorMessage = "Użytkownik o tej nazwie już istnieje";
+            return false;
+        }
         catch
         {
+            errorMessage = "Wystąpił błąd podczas tworzenia konta";
             return false;
         }
     }
 
     public User? AuthenticateUser(string username, string password)
     {
+        EnsureInitialized();
+        username = username.Trim();
         using var connection = new SqliteConnection(_connectionString);
         var user = connection.QueryFirstOrDefault<User>("SELECT * FROM Users WHERE Username = @Username",
             new { Username = username });
@@ -133,6 +169,7 @@ public class DatabaseManager(string dbPath = "squawk.db")
 
     public void ResetDatabase()
     {
+        EnsureInitialized();
         using var connection = new SqliteConnection(_connectionString);
         connection.Open();
         connection.Execute("DELETE FROM Users");
