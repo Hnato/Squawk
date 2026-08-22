@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "U9ihYGHVZYU=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\user\\Music\\Squawk\\Launcher.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\11.0.0-preview.3.26207.106\\microsoft.netcore.app.runtime.win-x64.11.0.0-preview.3.26207.106.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\11.0.0-preview.3.26207.106\\microsoft.windowsdesktop.app.runtime.win-x64.11.0.0-preview.3.26207.106.nupkg.sha512",
+    "C:\\Users\\user\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\11.0.0-preview.3.26207.106\\microsoft.aspnetcore.app.runtime.win-x64.11.0.0-preview.3.26207.106.nupkg.sha512"
+  ],
+  "logs": []
+}

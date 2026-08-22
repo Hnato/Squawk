@@ -1,16 +1,9 @@
-namespace SquawkServer;
+namespace Server;
 
 partial class Form1
 {
-    /// <summary>
-    ///  Required designer variable.
-    /// </summary>
     private System.ComponentModel.IContainer components = null;
 
-    /// <summary>
-    ///  Clean up any resources being used.
-    /// </summary>
-    /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
     protected override void Dispose(bool disposing)
     {
         if (disposing && (components != null))
@@ -22,10 +15,6 @@ partial class Form1
 
     #region Windows Form Designer generated code
 
-    /// <summary>
-    ///  Required method for Designer support - do not modify
-    ///  the contents of this method with the code editor.
-    /// </summary>
     private void InitializeComponent()
     {
         this.btnServer = new System.Windows.Forms.Button();
@@ -59,7 +48,7 @@ partial class Form1
         this.btnServer.TabIndex = 0;
         this.btnServer.Text = "Włącz Serwer";
         this.btnServer.UseVisualStyleBackColor = false;
-        this.btnServer.Click += new System.EventHandler(this.btnServer_Click);
+        this.btnServer.Click += new System.EventHandler(this.btnToggleGame_Click);
 
         // btnBots (Yellow)
         this.btnBots.BackColor = System.Drawing.Color.FromArgb(255, 193, 7);
@@ -72,7 +61,7 @@ partial class Form1
         this.btnBots.TabIndex = 1;
         this.btnBots.Text = "Włącz Boty";
         this.btnBots.UseVisualStyleBackColor = false;
-        this.btnBots.Click += new System.EventHandler(this.btnBots_Click);
+        this.btnBots.Click += new System.EventHandler(this.btnToggleBots_Click);
 
         // btnRestart (Green)
         this.btnRestart.BackColor = System.Drawing.Color.FromArgb(40, 167, 69);
@@ -98,7 +87,7 @@ partial class Form1
         this.btnResetDB.TabIndex = 3;
         this.btnResetDB.Text = "Reset Bazy Danych";
         this.btnResetDB.UseVisualStyleBackColor = false;
-        this.btnResetDB.Click += new System.EventHandler(this.btnResetDB_Click);
+        this.btnResetDB.Click += new System.EventHandler(this.btnClearDb_Click);
 
         // lblStatusServer
         this.lblStatusServer.AutoSize = true;
@@ -114,8 +103,8 @@ partial class Form1
         this.lblStatusBots.Location = new System.Drawing.Point(270, 85);
         this.lblStatusBots.Name = "lblStatusBots";
         this.lblStatusBots.Size = new System.Drawing.Size(100, 18);
-        this.lblStatusBots.Text = "Boty: Wyłączone";
-        this.lblStatusBots.ForeColor = System.Drawing.Color.FromArgb(220, 53, 69);
+        this.lblStatusBots.Text = "Boty: Włączone";
+        this.lblStatusBots.ForeColor = System.Drawing.Color.FromArgb(40, 167, 69);
         this.lblStatusBots.Font = new System.Drawing.Font("Segoe UI Semibold", 10F, System.Drawing.FontStyle.Bold);
 
         // txtLogs
@@ -150,6 +139,6 @@ partial class Form1
     private System.Windows.Forms.Label lblStatusServer;
     private System.Windows.Forms.Label lblStatusBots;
     private System.Windows.Forms.TextBox txtLogs;
-}
-#endregion
 
+    #endregion
+}
