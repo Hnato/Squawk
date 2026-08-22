@@ -1,5 +1,4 @@
 <div align="center">
-<img src="./Images/baner.png" alt="Squawk" width="100%" />
 <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=28&pause=1000&color=1b5e20&center=true&vCenter=true&width=600&lines=🚀+Squawk+V1+;🔥+Web+Game;🛠️+Built+by+Hnato;" alt="Squawk" />
 
 **Fast-Paced Real-Time Multiplayer Snake Arena Game**
