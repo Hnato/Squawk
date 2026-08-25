@@ -51,12 +51,13 @@ export default function App() {
     setView('login');
   };
 
-  const handleSkinSaved = (skinColor: string) => {
+  const handleSkinSaved = (skinColor: string, skinPattern: string) => {
     setUser((currentUser) =>
       currentUser
         ? {
             ...currentUser,
             skinColor,
+            skinPattern,
           }
         : currentUser,
     );

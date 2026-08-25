@@ -85,7 +85,7 @@ public class GameEngine
         Form1.Instance?.Log("Silnik gry zatrzymany.");
     }
 
-    public void AddPlayer(string connectionId, string username, string skinColor)
+    public void AddPlayer(string connectionId, string username, string skinColor, string skinPattern = "ara")
     {
         float spawnDistance = (float)(_rand.NextDouble() * MapRadius * 0.45f);
         float spawnAngle = (float)(_rand.NextDouble() * Math.PI * 2);
@@ -98,6 +98,7 @@ public class GameEngine
             Id = connectionId,
             Username = username,
             SkinColor = skinColor,
+            SkinPattern = string.IsNullOrEmpty(skinPattern) ? "ara" : skinPattern,
             Score = 100,
             Angle = travelAngle,
             IsBot = false
@@ -140,7 +141,6 @@ public class GameEngine
             {
                 _players.TryRemove(botId, out _);
             }
-
             return;
         }
 
@@ -156,166 +156,154 @@ public class GameEngine
             SpawnBot();
         }
 
-        // Optimized Steering AI for bots
+        // Hyper-Greedy, Aggressive Predator AI for bots
         foreach (var bot in _players.Values.Where(p => p.IsBot && !p.IsDead))
         {
+            if (bot.Body.Count == 0) continue;
             var head = bot.Body[0];
-            float moveVx = MathF.Cos(bot.Angle);
-            float moveVy = MathF.Sin(bot.Angle);
-            bool emergencyFlee = false;
+            float distFromCenter = MathF.Sqrt(head.X * head.X + head.Y * head.Y);
 
-            // 1. Wall repulsion force
-            float distanceFromCenter = MathF.Sqrt(head.X * head.X + head.Y * head.Y);
-            if (distanceFromCenter > MapRadius * 0.72f)
+            // 1. HARD BORDER SAFETY: When near border, steer decisively straight towards center
+            if (distFromCenter > MapRadius * 0.82f)
             {
-                float wallFactor = (distanceFromCenter - MapRadius * 0.72f) / (MapRadius * 0.28f);
-                float wallForce = wallFactor * wallFactor * 6.0f;
-                moveVx -= (head.X / distanceFromCenter) * wallForce;
-                moveVy -= (head.Y / distanceFromCenter) * wallForce;
+                float angleToCenter = MathF.Atan2(-head.Y, -head.X);
+                bot.Angle = RotateTowards(bot.Angle, angleToCenter, 0.35f);
+                bot.IsBoosting = bot.Score > 50;
+                continue;
             }
 
-            // 2. Obstacle / Enemy body repulsion force
-            float bodyRepulsionX = 0f;
-            float bodyRepulsionY = 0f;
+            // 2. TARGET SELECTION (Food Hunger & Killer Instinct)
+            float bestTargetX = head.X + MathF.Cos(bot.Angle) * 100f;
+            float bestTargetY = head.Y + MathF.Sin(bot.Angle) * 100f;
+            float highestDesireScore = -1f;
+            bool shouldBoost = false;
 
-            foreach (var other in _players.Values)
+            // A. Search for High-Value Food and nearby pellets
+            foreach (var food in _foods.Values)
             {
-                if (other.Id == bot.Id || other.IsDead) continue;
+                float dx = food.Position.X - head.X;
+                float dy = food.Position.Y - head.Y;
+                float distSq = dx * dx + dy * dy;
+                if (distSq > 550f * 550f) continue;
 
-                int step = Math.Max(1, other.Body.Count / 10);
-                for (int index = 0; index < other.Body.Count; index += step)
+                float dist = MathF.Sqrt(distSq);
+                // Big drops (dead snakes) get immense desire score
+                float desire = (food.Value >= 18 ? 3200f : food.Value * 120f) / MathF.Max(dist, 15f);
+
+                if (desire > highestDesireScore)
                 {
-                    var seg = other.Body[index];
-                    float dx = head.X - seg.X;
-                    float dy = head.Y - seg.Y;
-                    float distSq = dx * dx + dy * dy;
-
-                    if (distSq < BotDangerRadius * BotDangerRadius && distSq > 1f)
+                    highestDesireScore = desire;
+                    bestTargetX = food.Position.X;
+                    bestTargetY = food.Position.Y;
+                    if (food.Value >= 18 && dist < 320f && bot.Score > 50)
                     {
-                        float dist = MathF.Sqrt(distSq);
-                        float force = (BotDangerRadius - dist) / BotDangerRadius;
-                        force = force * force * 4.0f;
-
-                        bodyRepulsionX += (dx / dist) * force;
-                        bodyRepulsionY += (dy / dist) * force;
-
-                        if (dist < 70f)
-                        {
-                            emergencyFlee = true;
-                        }
+                        shouldBoost = true;
                     }
                 }
             }
 
-            moveVx += bodyRepulsionX;
-            moveVy += bodyRepulsionY;
-
-            // 3. Ambition-Driven Growth & Combat AI
-            Food? bestFoodCluster = null;
-            float maxFoodScore = float.MinValue;
-
-            // Search for high-value food clusters (e.g. dead snake drops)
-            foreach (var food in _foods.Values)
-            {
-                float fdx = food.Position.X - head.X;
-                float fdy = food.Position.Y - head.Y;
-                float fdistSq = fdx * fdx + fdy * fdy;
-
-                if (fdistSq > 500f * 500f) continue;
-
-                float fdist = MathF.Sqrt(fdistSq);
-                // Prioritize high-value food (dead snake drops) and nearby food
-                float candidateScore = (food.Value * 150f) / MathF.Max(fdist, 15f);
-
-                if (candidateScore > maxFoodScore)
-                {
-                    maxFoodScore = candidateScore;
-                    bestFoodCluster = food;
-                }
-            }
-
-            PlayerData? targetEnemy = null;
-            float nearestEnemyDistSq = 350f * 350f;
-
-            // Only consider combat if target is close
+            // B. Hunt and Kill Nearby Snakes (Predator Mode)
             foreach (var enemy in _players.Values)
             {
-                if (enemy.Id == bot.Id || enemy.IsDead) continue;
+                if (enemy.Id == bot.Id || enemy.IsDead || enemy.Body.Count == 0) continue;
                 var enemyHead = enemy.Body[0];
                 float edx = enemyHead.X - head.X;
                 float edy = enemyHead.Y - head.Y;
-                float edistSq = edx * edx + edy * edy;
+                float distSq = edx * edx + edy * edy;
 
-                if (edistSq < nearestEnemyDistSq)
+                if (distSq > 420f * 420f) continue;
+                float dist = MathF.Sqrt(distSq);
+
+                // If bot is bigger or equal, attack aggressively to cut them off
+                if (bot.Score >= enemy.Score * 0.85f)
                 {
-                    nearestEnemyDistSq = edistSq;
-                    targetEnemy = enemy;
+                    float enemySpeed = enemy.IsBoosting ? 5.5f : 3.0f;
+                    // Predict future head position (intercept lead)
+                    float interceptLead = MathF.Min(dist / 10f, 25f);
+                    float predX = enemyHead.X + MathF.Cos(enemy.Angle) * (enemySpeed * interceptLead + 30f);
+                    float predY = enemyHead.Y + MathF.Sin(enemy.Angle) * (enemySpeed * interceptLead + 30f);
+
+                    float huntDesire = 2800f / MathF.Max(dist, 20f);
+                    if (huntDesire > highestDesireScore)
+                    {
+                        highestDesireScore = huntDesire;
+                        bestTargetX = predX;
+                        bestTargetY = predY;
+
+                        // Boost to cut off enemy head!
+                        if (dist < 220f && dist > 30f && bot.Score > 45)
+                        {
+                            shouldBoost = true;
+                        }
+                    }
+                }
+                else if (enemy.Score > bot.Score * 1.4f && dist < 120f)
+                {
+                    // Evade much larger predator when dangerously close
+                    float fleeX = head.X - edx;
+                    float fleeY = head.Y - edy;
+                    bestTargetX = fleeX;
+                    bestTargetY = fleeY;
+                    shouldBoost = bot.Score > 45;
                 }
             }
 
-            bool isTacticalBoost = false;
+            // 3. TARGET ANGLE
+            float desiredAngle = MathF.Atan2(bestTargetY - head.Y, bestTargetX - head.X);
 
-            // Decision Logic: Growth ambition vs Opportunistic Combat
-            bool focusOnGrowth = (bot.Score < 450) || (bestFoodCluster != null && bestFoodCluster.Value >= 20);
-
-            if (!focusOnGrowth && targetEnemy != null && bot.Score > targetEnemy.Score * 1.2f)
+            // 4. IMMINENT COLLISION DODGE (Only dodge when actual body is directly in front within 40px)
+            foreach (var other in _players.Values)
             {
-                // Coiling / Trap maneuver when large enough
-                var enemyHead = targetEnemy.Body[0];
-                float distToEnemy = MathF.Sqrt(nearestEnemyDistSq);
-                float angleToTarget = MathF.Atan2(enemyHead.Y - head.Y, enemyHead.X - head.X);
-                float coilAngle = angleToTarget + MathF.PI * 0.52f;
+                if (other.Id == bot.Id || other.IsDead || other.Body.Count == 0) continue;
 
-                moveVx += MathF.Cos(coilAngle) * 3.8f;
-                moveVy += MathF.Sin(coilAngle) * 3.8f;
-                isTacticalBoost = distToEnemy < 160f;
-            }
-            else if (bestFoodCluster != null)
-            {
-                // Active Food Scavenging & Mass Accumulation
-                float fdx = bestFoodCluster.Position.X - head.X;
-                float fdy = bestFoodCluster.Position.Y - head.Y;
-                float fdist = MathF.Sqrt(fdx * fdx + fdy * fdy);
-
-                if (fdist > 1f)
+                for (int i = 2; i < other.Body.Count; i += 2)
                 {
-                    moveVx += (fdx / fdist) * 3.5f;
-                    moveVy += (fdy / fdist) * 3.5f;
+                    var seg = other.Body[i];
+                    float sdx = seg.X - head.X;
+                    float sdy = seg.Y - head.Y;
+                    float sdistSq = sdx * sdx + sdy * sdy;
 
-                    // Rush to high value drop clusters
-                    if (bestFoodCluster.Value >= 20 && fdist < 320f && fdist > 40f && bot.Score > 60)
+                    if (sdistSq < 42f * 42f)
                     {
-                        isTacticalBoost = true;
+                        // Direct obstacle in front! Steer perpendicular away
+                        float obstacleAngle = MathF.Atan2(sdy, sdx);
+                        float angleDiff = NormalizeAngle(desiredAngle - obstacleAngle);
+                        float dodgeSign = angleDiff >= 0 ? 1f : -1f;
+                        desiredAngle = obstacleAngle + dodgeSign * (MathF.PI * 0.55f);
+                        break;
                     }
                 }
             }
 
-            float desiredAngle = MathF.Atan2(moveVy, moveVx);
-            bot.Angle = RotateTowards(bot.Angle, desiredAngle, bot.BotSteerStrength);
-            bot.IsBoosting = emergencyFlee || isTacticalBoost;
+            bot.Angle = RotateTowards(bot.Angle, desiredAngle, 0.28f);
+            bot.IsBoosting = shouldBoost;
         }
     }
 
     private void SpawnBot()
     {
         string botId = "bot_" + Guid.NewGuid().ToString().Substring(0, 8);
-        string[] colors = { "#ef4444", "#22c55e", "#3b82f6", "#eab308", "#ec4899", "#06b6d4", "#a855f7" };
-        float dist = (float)(_rand.NextDouble() * MapRadius * 0.75f);
+        string[] patterns = { "ara", "ararauna", "nimfa", "zako", "kakadu", "falista", "lorysa", "amazonka", "cyber", "sloneczna" };
+        string[] colors = { "#ef4444", "#3b82f6", "#f59e0b", "#94a3b8", "#f8fafc", "#10b981", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316" };
+        
+        int patternIdx = _rand.Next(patterns.Length);
+        float dist = (float)(_rand.NextDouble() * MapRadius * 0.70f);
         float angle = (float)(_rand.NextDouble() * Math.PI * 2);
         float x = (float)(Math.Cos(angle) * dist);
         float y = (float)(Math.Sin(angle) * dist);
 
-        int initialScore = _rand.Next(100, 200);
+        int initialScore = _rand.Next(100, 220);
 
         var bot = new PlayerData
         {
             Id = botId,
             Username = GenerateBotName(),
-            SkinColor = colors[_rand.Next(colors.Length)],
+            SkinColor = colors[patternIdx % colors.Length],
+            SkinPattern = patterns[patternIdx],
             Score = initialScore,
             IsBot = true,
             Angle = angle,
-            BotSteerStrength = 0.09f + (float)_rand.NextDouble() * 0.07f
+            BotSteerStrength = 0.25f + (float)_rand.NextDouble() * 0.08f
         };
 
         SeedBody(bot, x, y, angle, BaseBodySegments + initialScore / 18);
@@ -327,11 +315,11 @@ public class GameEngine
     {
         while (_foods.Count < MaxFoodCount)
         {
-            float dist = (float)Math.Sqrt(_rand.NextDouble()) * MapRadius;
+            float dist = (float)Math.Sqrt(_rand.NextDouble()) * (MapRadius * 0.94f);
             float angle = (float)(_rand.NextDouble() * Math.PI * 2);
             var pos = new Vector2D((float)(Math.Cos(angle) * dist), (float)(Math.Sin(angle) * dist));
             
-            string[] colors = { "#ef4444", "#22c55e", "#3b82f6", "#eab308", "#ec4899", "#06b6d4", "#ffffff" };
+            string[] colors = { "#ef4444", "#22c55e", "#3b82f6", "#eab308", "#ec4899", "#06b6d4", "#f97316", "#a855f7", "#ffffff" };
             
             var food = new Food
             {
@@ -348,12 +336,12 @@ public class GameEngine
     {
         foreach (var p in _players.Values)
         {
-            if (p.IsDead) continue;
+            if (p.IsDead || p.Body.Count == 0) continue;
 
             float speed = p.MoveSpeed;
             if (p.IsBoosting && p.Score > 40)
             {
-                speed *= 1.85f; // Faster, punchy sprint speed
+                speed *= 1.85f;
                 p.BoostCostTicks++;
                 if (p.BoostCostTicks > 5)
                 {
@@ -366,7 +354,7 @@ public class GameEngine
                 }
             }
             
-            // Move head position
+            // 1. Advance head position forward in angle direction
             var head = p.Body[0];
             float newX = head.X + MathF.Cos(p.Angle) * speed;
             float newY = head.Y + MathF.Sin(p.Angle) * speed;
@@ -382,7 +370,7 @@ public class GameEngine
             head.X = newX;
             head.Y = newY;
 
-            // Balanced length growth (+25% harder score threshold per segment)
+            // 2. Segment length growth & tail trimming
             int desiredLength = BaseBodySegments + (p.Score / 18);
 
             while (p.Body.Count < desiredLength)
@@ -390,25 +378,27 @@ public class GameEngine
                 var last = p.Body.Last();
                 p.Body.Add(new Vector2D(last.X, last.Y));
             }
-            while (p.Body.Count > desiredLength)
+            while (p.Body.Count > desiredLength && p.Body.Count > 2)
             {
                 p.Body.RemoveAt(p.Body.Count - 1);
             }
 
-            // Propagate distance constraint across body segments (Inverse Kinematics joint anchoring)
+            // 3. True Snake Trail Pulling Physics:
+            // When segment i-1 moves, segment i is pulled towards segment i-1 ONLY by the excess distance.
+            // This ensures segments follow the head's exact path without freezing, bunching or pushing away.
             for (int i = 1; i < p.Body.Count; i++)
             {
                 var prev = p.Body[i - 1];
                 var curr = p.Body[i];
-                float dx = curr.X - prev.X;
-                float dy = curr.Y - prev.Y;
+                float dx = prev.X - curr.X;
+                float dy = prev.Y - curr.Y;
                 float dist = MathF.Sqrt(dx * dx + dy * dy);
 
-                if (dist > 0.001f)
+                if (dist > SegmentSpacing)
                 {
-                    float factor = SegmentSpacing / dist;
-                    curr.X = prev.X + dx * factor;
-                    curr.Y = prev.Y + dy * factor;
+                    float excess = dist - SegmentSpacing;
+                    curr.X += (dx / dist) * excess;
+                    curr.Y += (dy / dist) * excess;
                 }
             }
         }
@@ -416,6 +406,8 @@ public class GameEngine
 
     private void DropFood(Vector2D pos, string color, int value = 8)
     {
+        if (_foods.Count >= MaxFoodCount + 100) return;
+
         var food = new Food
         {
             Id = Interlocked.Increment(ref _foodCounter),
@@ -439,7 +431,7 @@ public class GameEngine
 
     private void CheckCollisions()
     {
-        var players = _players.Values.Where(p => !p.IsDead).ToList();
+        var players = _players.Values.Where(p => !p.IsDead && p.Body.Count > 0).ToList();
         
         // Fast Spatial Grid Partitioning for food collisions
         var foodGrid = new Dictionary<(int x, int y), List<Food>>();
@@ -475,7 +467,7 @@ public class GameEngine
                         {
                             float fdx = food.Position.X - head.X;
                             float fdy = food.Position.Y - head.Y;
-                            if (fdx * fdx + fdy * fdy < 400f) // 20 radius squared
+                            if (fdx * fdx + fdy * fdy < 450f) // ~21 radius squared
                             {
                                 p.Score += food.Value;
                                 foodsEaten.Add(food.Id);
@@ -490,7 +482,7 @@ public class GameEngine
             // Check player collision (head hits other player's body)
             foreach (var other in players)
             {
-                if (p.Id == other.Id) continue;
+                if (p.Id == other.Id || other.IsDead) continue;
                 
                 // Skip head, start from index 2 to give leeway
                 for (int i = 2; i < other.Body.Count; i++)
@@ -498,7 +490,7 @@ public class GameEngine
                     var seg = other.Body[i];
                     float dx = seg.X - head.X;
                     float dy = seg.Y - head.Y;
-                    if (dx*dx + dy*dy < 225f) // 15 radius squared
+                    if (dx*dx + dy*dy < 240f) // ~15.5 radius squared
                     {
                         p.IsDead = true;
                         TurnIntoFood(p);
@@ -509,7 +501,7 @@ public class GameEngine
             }
         }
 
-        // Clean up dead humans from dictionary, keep bots so ManageBots can clean them (or just clean here)
+        // Clean up dead humans from dictionary
         var deadHumans = players.Where(p => p.IsDead && !p.IsBot).ToList();
         foreach (var dead in deadHumans)
         {
@@ -518,17 +510,39 @@ public class GameEngine
         }
     }
 
+    private int _isBroadcasting = 0;
+
     private async void BroadcastState()
     {
         if (_hubContext == null) return;
 
-        var state = new GameStateDto
+        // Prevent overlapping asynchronous broadcasts from queueing up and saturating bandwidth / CPU
+        if (Interlocked.CompareExchange(ref _isBroadcasting, 1, 0) != 0)
         {
-            Players = _players.Values.ToList(),
-            Food = _foods.Values.ToList()
-        };
+            return;
+        }
 
-        await _hubContext.Clients.All.SendAsync("UpdateState", state);
+        try
+        {
+            var livingPlayers = _players.Values.Where(p => !p.IsDead).ToList();
+            var foods = _foods.Values.ToList();
+
+            var state = new GameStateDto
+            {
+                Players = livingPlayers,
+                Food = foods
+            };
+
+            await _hubContext.Clients.All.SendAsync("UpdateState", state);
+        }
+        catch
+        {
+            // Ignore broadcast exceptions during disconnects
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _isBroadcasting, 0);
+        }
     }
 
     private void SeedBody(PlayerData player, float x, float y, float angle, int segmentCount)
@@ -581,3 +595,4 @@ public class GameEngine
         return $"{baseName}{suffix}";
     }
 }
+

@@ -19,6 +19,7 @@ public class PlayerData
     public string Id { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
     public string SkinColor { get; set; } = "#22c55e";
+    public string SkinPattern { get; set; } = "ara";
     public bool IsBot { get; set; }
     public List<Vector2D> Body { get; set; } = new();
     public float Angle { get; set; } // Radian direction

@@ -9,6 +9,7 @@ export type RemotePlayer = {
   id: string;
   username: string;
   skinColor: string;
+  skinPattern: string;
   isBot: boolean;
   body: Vector2D[];
   angle: number;
@@ -32,6 +33,7 @@ export type GameState = {
 type NetworkManagerOptions = {
   username: string;
   skinColor: string;
+  skinPattern: string;
   onConnected: () => void;
   onConnectionError: (message: string) => void;
   onStateUpdate: (state: GameState) => void;
@@ -71,6 +73,7 @@ export class NetworkManager {
         'JoinGame',
         this.options.username,
         this.options.skinColor,
+        this.options.skinPattern || 'ara',
       );
       this.options.onConnected();
     } catch (caughtError) {

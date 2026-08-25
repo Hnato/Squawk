@@ -20,10 +20,10 @@ public class GameHub : Hub
         return base.OnDisconnectedAsync(exception);
     }
 
-    public void JoinGame(string username, string skinColor)
+    public void JoinGame(string username, string skinColor, string skinPattern = "ara")
     {
         Form1.Instance?.Log($"Gracz dołączył: {username} ({Context.ConnectionId})");
-        GameEngine.Instance.AddPlayer(Context.ConnectionId, username, skinColor);
+        GameEngine.Instance.AddPlayer(Context.ConnectionId, username, skinColor, skinPattern);
     }
 
     public void UpdateInput(float angle, bool isBoosting)

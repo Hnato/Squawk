@@ -10,8 +10,10 @@
 using System;
 using System.Reflection;
 
-[assembly: System.Reflection.AssemblyCompanyAttribute("Squawk")]
+[assembly: System.Reflection.AssemblyCompanyAttribute("Hnato")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
+[assembly: System.Reflection.AssemblyCopyrightAttribute("Copyright © 2026 Hnato")]
+[assembly: System.Reflection.AssemblyDescriptionAttribute("Squawk Multiplayer Game Engine by Hnato")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
 [assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
 [assembly: System.Reflection.AssemblyProductAttribute("Squawk")]
