@@ -2,7 +2,7 @@
 
 <img src="./Images/baner.jpg" alt="Squawk Banner" width="100%" />
 
-<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=28&pause=1000&color=00ffcc&center=true&vCenter=true&width=600&lines=🚀+Squawk+Arena;🔥+Real-Time+Multiplayer;🛠️+Built+by+Hnato;🐍+Climb+The+Leaderboard" alt="Squawk Title" />
+<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=28&pause=1000&color=00ffcc&center=true&vCenter=true&width=600&lines=🚀+Squawk+Arena;🔥+Real-Time+Multiplayer;🛠️+Built+by+Hnato+and+ThomasWack;🐍+Climb+The+Leaderboard" alt="Squawk Title" />
 
 **Fast-Paced Real-Time Multiplayer Snake Arena Game**
 
